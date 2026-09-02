@@ -115,3 +115,20 @@ GitHub Actions is not used because the `gh` CLI token lacks the `workflow` scope
 A ready-made workflow is in `deploy/github-pages-workflow.yml.txt`; to switch to it, run
 `gh auth refresh -s workflow`, move the file to `.github/workflows/deploy.yml`, and set
 Pages source to "GitHub Actions".
+
+## Persona copy (updated 2026-09-02)
+
+The agent and widget now read as El Hornero's order-taker, in Ecuadorian Spanish (tú, not vos):
+
+| Where | Text |
+|---|---|
+| Agent name | El Hornero - Asistente de Pedidos |
+| Agent greeting (spoken first) | ¡Hola! Bienvenido a El Hornero, mucho más que pizza. Soy tu asistente de pedidos. ¿Qué se te antoja hoy: una pizza, un combo o algo de la casa? |
+| Agent prompt | Provisional Spanish order-taking prompt (greet, take items, delivery/pickup, name + phone, repeat order, close). The expert replaces it with the final prompt + knowledge base. |
+| Widget title | ¿Pedimos algo rico? 🍕 |
+| Widget button | Haz tu pedido por voz |
+| Widget agent name / description | Asistente de Pedidos · El Hornero / Pide tu pizza, combo o plato favorito por voz. ¡Te lo tomo en segundos! |
+| Bubble (first visit) | ¡Hola! ¿Se te antoja una pizza? Dime qué quieres y te tomo el pedido en segundos 🍕 |
+| Bubble (returning) | ¡Qué gusto verte de nuevo, {{name}}! ¿Lo de siempre o probamos algo nuevo? 🍕 |
+
+Site copy was also switched from voseo ("Tenés", "Probá", "Elegí") to tú forms for Ecuador.
