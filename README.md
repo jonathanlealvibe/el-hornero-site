@@ -5,7 +5,7 @@ with the GoHighLevel Voice AI widget loaded from `index.html`.
 
 - `npm run dev` — local dev server
 - `npm run build` — production build to `dist/`
-- Deploys automatically to GitHub Pages on push to `main` (see `.github/workflows/deploy.yml`),
+- Deployed to GitHub Pages from the `gh-pages` branch (`npm run deploy`),
   served at https://elhornero.conciergeai.space
 
 Design source and client artwork live in `design_handoff_el_hornero_ordering/`.
