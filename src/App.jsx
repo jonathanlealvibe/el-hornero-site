@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CATS, MENU, FREE_DELIVERY_OVER, DELIVERY_FEE, IVA } from './data.js'
+import InstallButton from './InstallButton.jsx'
 
 const money = (n) => '$' + n.toFixed(2)
 const CART_KEY = 'elhornero.cart'
@@ -137,6 +138,8 @@ export default function App() {
       <section id="hero" className="hero">
         <img src="/assets/hero-portada.png" alt="Encuentra promociones y descuentos exclusivos — descarga la app de el Hornero" />
       </section>
+
+      <InstallButton />
 
       <div className="catalog-cta">
         <a href="#menu">Conoce nuestro catálogo</a>
