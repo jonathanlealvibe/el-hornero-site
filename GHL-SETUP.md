@@ -92,3 +92,26 @@ Steps (Vercel; Netlify or Cloudflare Pages work the same way):
 
 Note: the GoHighLevel widget works on any domain, so no domain needs to be added
 inside GoHighLevel for the widget to load.
+
+## Deployment (done 2026-09-02)
+
+| Item | Value |
+|---|---|
+| Live URL | https://elhornero.conciergeai.space |
+| Source repo | https://github.com/jonathanlealvibe/el-hornero-site (branch `main`) |
+| Hosting | GitHub Pages, served from branch `gh-pages` (built `dist/`) |
+| DNS | Hostinger: CNAME `elhornero` → `jonathanlealvibe.github.io` (added 2026-09-02) |
+| Widget | Loaded from `index.html` (script tag before `</body>`) |
+
+### Updating the site
+```bash
+cd "/Users/jon/El Hornero"
+# edit src/…, then:
+git add -A && git commit -m "…" && git push
+npm run deploy   # builds and force-pushes dist/ to gh-pages
+```
+
+GitHub Actions is not used because the `gh` CLI token lacks the `workflow` scope.
+A ready-made workflow is in `deploy/github-pages-workflow.yml.txt`; to switch to it, run
+`gh auth refresh -s workflow`, move the file to `.github/workflows/deploy.yml`, and set
+Pages source to "GitHub Actions".
