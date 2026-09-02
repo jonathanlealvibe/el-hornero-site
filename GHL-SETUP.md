@@ -152,3 +152,13 @@ custom field and add one "Update contact field" action per field, same as the c�
 - Sub-account business profile switched to **Ecuador**: Quito, Pichincha, postal 170150, phone +593 99 900 5005, email callcenter@elhornero.com.ec (from the Camila prompt). Street address is a placeholder ("Dirección por confirmar"). Time zone stays GMT-5 (America/Bogota, same as Guayaquil).
 - Widget contact form now asks **Nombre, Teléfono, Cédula** (all mandatory). Email is not on the form: GoHighLevel forces email to be mandatory whenever it is included, so the only way to keep it optional is to leave it off. Camila collects the email verbally when someone asks for a factura con datos.
 - Everything else about the order (modalidad, dirección, ítems, pago, factura) stays in the call summary/transcript for now. Next step is a workflow that parses the post-call summary into a "Pedido" record.
+
+## WebApp (PWA) — live 2026-09-02
+
+| Item | Value |
+|---|---|
+| URL | https://hornero.conciergeai.space (HTTPS enforced) |
+| Repo | https://github.com/jonathanlealvibe/el-hornero-app (branch main, GitHub Pages) |
+| DNS | Hostinger CNAME `hornero` → `jonathanlealvibe.github.io` |
+| Source | `app/` folder in this project (index.html, manifest.json, sw.js, icons/) |
+| "Pedir ahora" | opens the Voice AI widget on the page; set `PHONE` in index.html to switch to a tel: link once a number exists |
