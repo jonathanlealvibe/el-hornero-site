@@ -146,3 +146,9 @@ The expert's prompt (already loaded) lists the other fields Camila should captur
 modalidad, dirección completa, local asignado, pedido detallado, subtotal, forma de pago,
 cambio para, tipo de factura, correo factura, notas de alérgenos. Create each as a contact
 custom field and add one "Update contact field" action per field, same as the cédula one.
+
+## Updates 2026-09-02 (later)
+
+- Sub-account business profile switched to **Ecuador**: Quito, Pichincha, postal 170150, phone +593 99 900 5005, email callcenter@elhornero.com.ec (from the Camila prompt). Street address is a placeholder ("Dirección por confirmar"). Time zone stays GMT-5 (America/Bogota, same as Guayaquil).
+- Widget contact form now asks **Nombre, Teléfono, Cédula** (all mandatory). Email is not on the form: GoHighLevel forces email to be mandatory whenever it is included, so the only way to keep it optional is to leave it off. Camila collects the email verbally when someone asks for a factura con datos.
+- Everything else about the order (modalidad, dirección, ítems, pago, factura) stays in the call summary/transcript for now. Next step is a workflow that parses the post-call summary into a "Pedido" record.
