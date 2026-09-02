@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #fff; font-family: Poppins, Helvetica, sans-serif; color: #1D1D1B; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0E5A33; text-decoration: none; }
+  a:hover { color: #0A4526; }
+  @media (max-width: 1080px) {
+    #topbar { flex-wrap: wrap !important; row-gap: 10px !important; }
+    #topbar > nav { order: 3 !important; flex-basis: 100% !important; }
+    #hero { grid-template-columns: 1fr !important; }
+    #hero h1 { font-size: 54px !important; }
+    #hero > div:last-child { min-height: 300px !important; }
+    #promo-pair { grid-template-columns: 1fr !important; justify-items: center !important; }
+    #promo-pair > a { max-width: 630px; width: 100%; }
+    #site-footer { grid-template-columns: 1fr !important; gap: 28px !important; }
+  }
+  @media (max-width: 700px) {
+    #hero h1 { font-size: 38px !important; }
+    #topbar { padding: 12px 18px !important; }
+  }
+</style>
+</helmet>
+
+<div style="max-width: 1920px; margin: 0 auto; background: #fff; position: relative;">
+
+  <header id="topbar" style="position: sticky; top: 0; z-index: 30; background: #fff; display: flex; align-items: center; gap: 26px; padding: 14px 28px; min-height: 78px;">
+    <a href="#inicio" style="font-family: Poppins, sans-serif; font-style: italic; font-weight: 600; font-size: 28px; letter-spacing: -0.02em; color: #0E5A33; flex: 0 0 auto;">el Hornero</a>
+
+    <nav style="display: flex; align-items: center; gap: 22px; font-weight: 600; font-size: 16px;">
+      <a href="#menu" style="color: #1D1D1B;" style-hover="color: #0E5A33;">Ordenar</a>
+      <a href="#restaurantes" style="color: #1D1D1B;" style-hover="color: #0E5A33;">Restaurantes</a>
+      <a href="#contactos" style="color: #1D1D1B;" style-hover="color: #0E5A33;">Contactos</a>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 18px; margin-left: auto; flex: 1 1 340px; min-width: 0; justify-content: flex-end;">
+      <div style="display: flex; align-items: center; gap: 12px; background: #F2F2F2; border-radius: 999px; padding: 8px 14px; flex: 1 1 240px; min-width: 130px; max-width: 300px;">
+        <span style="width: 28px; height: 28px; border-radius: 50%; background: #0E5A33; display: grid; place-items: center; flex: 0 0 auto;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><line x1="15.5" y1="15.5" x2="21" y2="21"></line></svg>
+        </span>
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Busca tu comida favorita" style="border: 0; outline: 0; background: transparent; font-family: Poppins, sans-serif; font-size: 15px; width: 100%; min-width: 0; color: #1D1D1B;" />
+      </div>
+
+      <a href="#cupones" style="display: grid; justify-items: center; gap: 3px; font-size: 12.5px; color: #1D1D1B; flex: 0 0 auto;">
+        <span style="width: 30px; height: 22px; border-radius: 5px; background: #1D1D1B; display: grid; place-items: center;">
+          <svg width="18" height="12" viewBox="0 0 24 16" fill="none" stroke="#F5C518" stroke-width="2" stroke-linecap="round"><path d="M2 3h20v3a2 2 0 0 0 0 4v3H2v-3a2 2 0 0 0 0-4Z"></path><line x1="9" y1="6" x2="15" y2="10"></line></svg>
+        </span>
+        Cupones
+      </a>
+      <a href="#cuenta" style="display: grid; justify-items: center; gap: 3px; font-size: 12.5px; color: #1D1D1B; flex: 0 0 auto;">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: #1D1D1B; display: grid; place-items: center; overflow: hidden;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff"><circle cx="12" cy="9" r="4"></circle><path d="M4 24a8 8 0 0 1 16 0Z"></path></svg>
+        </span>
+        Perfil
+      </a>
+      <button style="flex: 0 0 auto; background: #1D1D1B; color: #fff; border: 0; border-radius: 999px; padding: 15px 26px; font-family: Poppins, sans-serif; font-weight: 600; font-size: 15.5px; cursor: pointer;" style-hover="background: #0E5A33;">Ingresar</button>
+      <button onClick="{{ toggleCart }}" style="flex: 0 0 auto; position: relative; width: 52px; height: 52px; border-radius: 50%; border: 0; background: #F2F2F2; cursor: pointer; display: grid; place-items: center;" style-hover="background: #E4E4E4;">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h2.6l2.9 11.2h10.2L21 6.4H6.1"></path><circle cx="9.5" cy="19.5" r="1.7"></circle><circle cx="17.5" cy="19.5" r="1.7"></circle></svg>
+        <span style="position: absolute; top: -2px; right: -2px; min-width: 22px; height: 22px; border-radius: 999px; background: #0E5A33; color: #fff; font-size: 12px; font-weight: 600; display: grid; place-items: center; padding: 0 6px;">{{ cartCount }}</span>
+      </button>
+    </div>
+  </header>
+
+  <div style="background: #2B2B2B; display: flex; align-items: center; gap: 22px; padding: 12px 28px; flex-wrap: wrap;">
+    <div style="position: relative; display: grid; grid-template-columns: 1fr 1fr; background: #3A3A3A; border-radius: 999px; padding: 3px;">
+      <span style="{{ pillStyle }}"></span>
+      <button onClick="{{ setDelivery }}" style="position: relative; z-index: 1; cursor: pointer; border: 0; background: transparent; color: #fff; border-radius: 999px; padding: 8px 18px; font-family: Poppins, sans-serif; font-weight: 600; font-size: 14.5px;">A domicilio</button>
+      <button onClick="{{ setPickup }}" style="position: relative; z-index: 1; cursor: pointer; border: 0; background: transparent; color: #fff; border-radius: 999px; padding: 8px 18px; font-family: Poppins, sans-serif; font-weight: 600; font-size: 14.5px;">Para llevar</button>
+    </div>
+    <button style="background: transparent; border: 0; color: #fff; font-family: Poppins, sans-serif; font-weight: 500; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 7px;" style-hover="color: #F5C518;">Ingresa tu ubicación <span style="font-size: 10px;">▾</span></button>
+  </div>
+
+  <section id="hero" style="background: #0E5A33;">
+    <img src="assets/hero-portada.png" alt="Encuentra promociones y descuentos exclusivos — descarga la app de el Hornero" style="display: block; width: 100%; height: auto;" />
+  </section>
+
+  <div style="display: grid; place-items: center; padding: 46px 28px 6px;">
+    <a href="#menu" style="background: #0E5A33; color: #fff; border-radius: 999px; padding: 15px 34px; font-weight: 500; font-size: 17px;" style-hover="background: #0A4526; color: #fff;">Conoce nuestro catálogo</a>
+  </div>
+
+  <section id="menu" style="padding: 40px 28px 20px; max-width: 1400px; margin: 0 auto; width: 100%;">
+    <div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 26px;">
+      <h2 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.02em;">{{ sectionTitle }}</h2>
+      <sc-if value="{{ inCategory }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ clearCat }}" style="background: transparent; border: 0; color: #0E5A33; font-family: Poppins, sans-serif; font-weight: 600; font-size: 15px; cursor: pointer; padding: 0;" style-hover="color: #0A4526;">← Volver al menú</button>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showTiles }}" hint-placeholder-val="{{ true }}">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 26px;">
+        <sc-for list="{{ categories }}" as="cat" hint-placeholder-count="8">
+          <div style="display: grid; gap: 12px; cursor: pointer;" onClick="{{ cat.onSelect }}">
+            <div style="aspect-ratio: 1 / 1; border-radius: 10px; background: #0E5A33; overflow: hidden;">
+              <sc-if value="{{ cat.img }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ cat.img }}" alt="{{ cat.label }}" style="display: block; width: 100%; height: 100%; object-fit: cover;" />
+              </sc-if>
+            </div>
+            <span style="display: grid; gap: 10px;">
+              <span style="font-size: 15.5px; font-weight: 400; color: #1D1D1B;">{{ cat.label }}</span>
+              <span style="height: 1px; background: #D9D9D9;"></span>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ inCategory }}" hint-placeholder-val="{{ false }}">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 26px;">
+        <sc-for list="{{ items }}" as="item" hint-placeholder-count="4">
+          <article style="border: 1px solid #E6E6E6; border-radius: 10px; overflow: hidden; display: grid; grid-template-rows: 176px auto; background: #fff;" style-hover="border-color: #0E5A33;">
+            <div style="position: relative; background-color: #EFEFEF; background-image: repeating-linear-gradient(135deg, #E4E4E4 0 10px, #EFEFEF 10px 20px); display: grid; place-items: center;">
+              <span style="font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6A6A6A; background: #fff; padding: 6px 10px; border-radius: 3px;">{{ item.shot }}</span>
+              <sc-if value="{{ item.tag }}" hint-placeholder-val="{{ true }}">
+                <span style="position: absolute; top: 12px; left: 12px; background: #F5C518; color: #0E5A33; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;">{{ item.tag }}</span>
+              </sc-if>
+            </div>
+            <div style="padding: 16px 16px 18px; display: grid; gap: 9px; align-content: start;">
+              <h3 style="margin: 0; font-size: 17.5px; font-weight: 600; letter-spacing: -0.01em;">{{ item.name }}</h3>
+              <p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #6A6A6A; text-wrap: pretty;">{{ item.desc }}</p>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 5px;">
+                <span style="font-size: 19px; font-weight: 700; color: #0E5A33;">{{ item.price }}</span>
+                <button onClick="{{ item.onAdd }}" style="background: #0E5A33; color: #fff; border: 0; border-radius: 999px; padding: 10px 18px; font-family: Poppins, sans-serif; font-weight: 600; font-size: 14px; cursor: pointer;" style-hover="background: #0A4526;">Agregar</button>
+              </div>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+      <sc-if value="{{ isEmptyResults }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 56px 20px; text-align: center; color: #6A6A6A; border: 1px dashed #D9D9D9; border-radius: 10px;">
+          <p style="margin: 0 0 6px; font-weight: 600; font-size: 19px; color: #1D1D1B;">Sin resultados</p>
+          <p style="margin: 0; font-size: 15px;">Probá con otra categoría o cambiá la búsqueda.</p>
+        </div>
+      </sc-if>
+    </sc-if>
+  </section>
+
+  <sc-if value="{{ showPromoPair }}" hint-placeholder-val="{{ true }}">
+    <section id="promo-pair" style="max-width: 1400px; margin: 0 auto; width: 100%; padding: 48px 28px 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 34px;">
+      <a id="cupones" href="#cupones" style="border-radius: 10px; overflow: hidden; display: block;">
+        <img src="assets/banner-cupon.png" alt="#Cupones — descuentos y promociones" style="display: block; width: 100%; height: auto;" />
+      </a>
+      <a href="#cuenta" style="border-radius: 10px; overflow: hidden; display: block;">
+        <img src="assets/banner-descarga.png" alt="#AppMobile — descarga la app de el Hornero" style="display: block; width: 100%; height: auto;" />
+      </a>
+    </section>
+  </sc-if>
+
+  <footer style="background: #0E5A33; color: #fff; padding: 56px 28px 30px;">
+    <div id="site-footer" style="max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.6fr; gap: 40px; align-items: start;">
+      <div style="display: grid; gap: 30px; justify-items: start;">
+        <span style="font-style: italic; font-weight: 600; font-size: 30px; letter-spacing: -0.02em;">el Hornero</span>
+        <span style="display: flex; gap: 14px;">
+          <a href="#contactos" style="width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.55); display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;" style-hover="background: #fff; color: #0E5A33;">IG</a>
+          <a href="#contactos" style="width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #0E5A33; display: grid; place-items: center; font-weight: 700; font-size: 17px; font-family: Georgia, serif;" style-hover="background: #F5C518; color: #0E5A33;">f</a>
+        </span>
+      </div>
+      <div id="restaurantes" style="display: flex; flex-wrap: wrap; gap: 12px 26px; justify-content: flex-end; font-weight: 600; font-size: 15.5px;">
+        <a href="#menu" style="color: #fff;" style-hover="color: #F5C518;">Ordenar</a>
+        <a href="#restaurantes" style="color: #fff;" style-hover="color: #F5C518;">Restaurantes</a>
+        <a href="#contactos" style="color: #fff;" style-hover="color: #F5C518;">Términos legales</a>
+        <a href="#contactos" style="color: #fff;" style-hover="color: #F5C518;">Contactos</a>
+        <a href="#cuenta" style="color: #fff;" style-hover="color: #F5C518;">Sé parte de hornero</a>
+        <a href="#cuenta" style="color: #fff;" style-hover="color: #F5C518;">Comprobantes</a>
+      </div>
+    </div>
+    <div id="contactos" style="max-width: 1400px; margin: 40px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.35); display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; font-size: 14px;">
+      <span>Copyright © HORNERO Ecuador. Todos los derechos reservados.</span>
+      <span>Pedidos: 200 200 0011 · Todos los días 11h00 – 23h00</span>
+    </div>
+  </footer>
+
+  <aside style="{{ drawerStyle }}">
+    <div style="padding: 20px 22px; border-bottom: 1px solid #EDEDED; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <span style="display: grid; gap: 2px;">
+        <span style="font-weight: 600; font-size: 19px;">Mi pedido</span>
+        <span style="font-size: 12.5px; color: #6A6A6A; letter-spacing: 0.06em;">{{ modeLabel }}</span>
+      </span>
+      <button onClick="{{ toggleCart }}" style="width: 34px; height: 34px; border-radius: 50%; border: 0; background: #F2F2F2; cursor: pointer; font-size: 16px; line-height: 1;" style-hover="background: #E4E4E4;">×</button>
+    </div>
+
+    <div style="overflow-y: auto;">
+      <sc-for list="{{ cartLines }}" as="line" hint-placeholder-count="2">
+        <div style="display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; padding: 15px 22px; border-bottom: 1px solid #F4F4F4;">
+          <span style="height: 48px; border-radius: 8px; background-color: #EFEFEF; background-image: repeating-linear-gradient(135deg, #E4E4E4 0 8px, #EFEFEF 8px 16px);"></span>
+          <span style="display: grid; gap: 6px; min-width: 0;">
+            <span style="font-weight: 500; font-size: 14.5px;">{{ line.name }}</span>
+            <span style="display: flex; align-items: center; gap: 9px;">
+              <button onClick="{{ line.onMinus }}" style="width: 26px; height: 26px; border-radius: 7px; border: 1px solid #E0E0E0; background: #fff; cursor: pointer; font-size: 15px; line-height: 1;">–</button>
+              <span style="font-size: 14px; min-width: 14px; text-align: center;">{{ line.qty }}</span>
+              <button onClick="{{ line.onPlus }}" style="width: 26px; height: 26px; border-radius: 7px; border: 1px solid #E0E0E0; background: #fff; cursor: pointer; font-size: 15px; line-height: 1;">+</button>
+            </span>
+          </span>
+          <span style="font-size: 14.5px; font-weight: 600;">{{ line.total }}</span>
+        </div>
+      </sc-for>
+      <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 44px 26px; text-align: center; color: #6A6A6A; font-size: 14.5px; line-height: 1.55;">
+          Tu pedido está vacío.<br />Elegí una categoría del menú para empezar.
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="margin-top: auto; padding: 18px 22px 22px; border-top: 1px solid #EDEDED; display: grid; gap: 8px; background: #FAFAFA;">
+      <span style="display: flex; justify-content: space-between; font-size: 14px; color: #6A6A6A;">Subtotal <span>{{ subtotal }}</span></span>
+      <span style="display: flex; justify-content: space-between; font-size: 14px; color: #6A6A6A;">Envío <span>{{ shipping }}</span></span>
+      <span style="display: flex; justify-content: space-between; font-size: 14px; color: #6A6A6A;">IVA 15% <span>{{ tax }}</span></span>
+      <span style="display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; margin-top: 4px; border-top: 1px solid #E6E6E6; font-weight: 700; font-size: 19px;">Total <span>{{ total }}</span></span>
+      <button style="margin-top: 8px; width: 100%; background: #0E5A33; color: #fff; border: 0; border-radius: 999px; padding: 15px; font-family: Poppins, sans-serif; font-weight: 600; font-size: 16px; cursor: pointer;" style-hover="background: #0A4526;">Continuar al pago</button>
+      <span style="text-align: center; font-size: 12.5px; color: #6A6A6A;">{{ freeHint }}</span>
+    </div>
+  </aside>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showPromoPair&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;freeDeliveryOver&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:25,&quot;min&quot;:0,&quot;max&quot;:80,&quot;step&quot;:1,&quot;unit&quot;:&quot;$&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;defaultCategory&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Ninguna&quot;,&quot;options&quot;:[&quot;Ninguna&quot;,&quot;Platos de temporada&quot;,&quot;Combos&quot;,&quot;Pizzas tradicionales&quot;,&quot;Ofertas del momento&quot;,&quot;Platos fuertes&quot;,&quot;Para empezar&quot;,&quot;Menú infantil&quot;,&quot;Acompañantes&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+const CATS = [
+  { key: 'Platos de temporada', img: 'assets/cat-temporada.png' },
+  { key: 'Combos', img: 'assets/cat-combos.png' },
+  { key: 'Pizzas tradicionales', img: 'assets/cat-pizzas.png' },
+  { key: 'Ofertas del momento', img: 'assets/cat-ofertas.png' },
+  { key: 'Platos fuertes', img: 'assets/cat-fuertes.png' },
+  { key: 'Para empezar', img: 'assets/cat-empezar.png' },
+  { key: 'Menú infantil', img: 'assets/cat-infantil.png' },
+  { key: 'Acompañantes', img: 'assets/cat-acompanantes.png' }
+];
+
+const MENU = [
+  { id: 't1', cat: 'Platos de temporada', name: 'Pizza de la huerta', price: 15.9, tag: 'Temporada', desc: 'Zucchini, pimiento asado, aceitunas negras y albahaca fresca.', shot: 'pizza de la huerta' },
+  { id: 't2', cat: 'Platos de temporada', name: 'Calzone de hongos', price: 13.5, tag: '', desc: 'Champiñones, mozzarella y crema de ajo, doblado al horno.', shot: 'calzone' },
+  { id: 'k1', cat: 'Combos', name: 'Combo familiar', price: 27.9, tag: 'Ahorra $6', desc: 'Pizza grande, papas, pan al ajillo y dos bebidas de 1 L.', shot: 'combo familiar' },
+  { id: 'k2', cat: 'Combos', name: 'Combo dúo', price: 18.4, tag: '', desc: 'Dos pizzas medianas a elección más papas rústicas.', shot: 'combo dúo' },
+  { id: 'p1', cat: 'Pizzas tradicionales', name: 'Napolitana', price: 13.9, tag: 'Favorita', desc: 'Salsa de tomate, mozzarella, orégano y aceite de oliva.', shot: 'pizza napolitana' },
+  { id: 'p2', cat: 'Pizzas tradicionales', name: 'Pepperoni', price: 15.2, tag: '', desc: 'Doble pepperoni y mozzarella en masa de horno de leña.', shot: 'pizza pepperoni' },
+  { id: 'p3', cat: 'Pizzas tradicionales', name: 'Cuatro quesos', price: 16.5, tag: '', desc: 'Mozzarella, gorgonzola, parmesano y queso de cabra.', shot: 'pizza 4 quesos' },
+  { id: 'p4', cat: 'Pizzas tradicionales', name: 'Hawaiana', price: 14.6, tag: '', desc: 'Jamón, piña en almíbar natural y mozzarella.', shot: 'pizza hawaiana' },
+  { id: 'o1', cat: 'Ofertas del momento', name: 'Pan al ajillo 2x1', price: 4.9, tag: '2x1', desc: 'Pan recién horneado con mantequilla de ajo y perejil.', shot: 'pan al ajillo' },
+  { id: 'o2', cat: 'Ofertas del momento', name: 'Martes de lasaña', price: 9.9, tag: '-30%', desc: 'Lasaña de carne gratinada, solo los martes.', shot: 'lasaña' },
+  { id: 'f1', cat: 'Platos fuertes', name: 'Churrasco hornero', price: 16.9, tag: 'Clásico', desc: 'Lomo a la plancha, huevos fritos, arroz, papas y ensalada.', shot: 'churrasco' },
+  { id: 'f2', cat: 'Platos fuertes', name: 'Milanesa a caballo', price: 15.4, tag: '', desc: 'Milanesa de res empanizada con huevo frito y papas.', shot: 'milanesa' },
+  { id: 'e1', cat: 'Para empezar', name: 'Pan de la casa', price: 4.5, tag: '', desc: 'Seis rebanadas con mantequilla de ajo y queso fundido.', shot: 'pan de la casa' },
+  { id: 'e2', cat: 'Para empezar', name: 'Alitas BBQ', price: 8.9, tag: '', desc: 'Ocho alitas glaseadas con salsa BBQ ahumada.', shot: 'alitas' },
+  { id: 'i1', cat: 'Menú infantil', name: 'Mini pizza + jugo', price: 6.9, tag: '', desc: 'Pizza personal de queso, jugo natural y galleta.', shot: 'mini pizza' },
+  { id: 'i2', cat: 'Menú infantil', name: 'Nuggets con papas', price: 6.4, tag: '', desc: 'Cinco nuggets de pollo, papas fritas y bebida pequeña.', shot: 'nuggets' },
+  { id: 'a1', cat: 'Acompañantes', name: 'Papas horneras', price: 5.9, tag: 'Nuevo', desc: 'Papas fritas con carne desmechada y salsa de queso.', shot: 'papas horneras' },
+  { id: 'a2', cat: 'Acompañantes', name: 'Ensalada césar', price: 6.5, tag: '', desc: 'Lechuga romana, crotones, parmesano y aderezo césar.', shot: 'ensalada césar' }
+];
+
+class Component extends DCLogic {
+  state = { cat: null, query: '', cart: { p2: 1 }, mode: 'delivery', cartOpen: false };
+
+  money(n) { return '$' + n.toFixed(2); }
+  add(id) { this.setState(s => ({ cart: Object.assign({}, s.cart, { [id]: (s.cart[id] || 0) + 1 }), cartOpen: true })); }
+  bump(id, d) {
+    this.setState(s => {
+      const c = Object.assign({}, s.cart);
+      const q = (c[id] || 0) + d;
+      if (q <= 0) delete c[id]; else c[id] = q;
+      return { cart: c };
+    });
+  }
+
+  renderVals() {
+    const q = this.state.query.trim().toLowerCase();
+    const searching = q.length > 0;
+    const activeCat = this.state.cat || (this.props.defaultCategory && this.props.defaultCategory !== 'Ninguna' ? this.props.defaultCategory : null);
+    const inCategory = searching || !!activeCat;
+
+    const items = MENU.filter(m =>
+      (searching || m.cat === activeCat) &&
+      (!searching || (m.name + ' ' + m.desc + ' ' + m.cat).toLowerCase().includes(q))
+    );
+
+
+    const cartLines = Object.keys(this.state.cart).map(id => {
+      const m = MENU.find(x => x.id === id);
+      const qty = this.state.cart[id];
+      return { name: m.name, qty: qty, total: this.money(m.price * qty), onPlus: () => this.bump(id, 1), onMinus: () => this.bump(id, -1) };
+    });
+
+    const subtotal = Object.keys(this.state.cart).reduce((t, id) => t + MENU.find(x => x.id === id).price * this.state.cart[id], 0);
+    const threshold = this.props.freeDeliveryOver ?? 25;
+    const isPickup = this.state.mode === 'pickup';
+    const ship = isPickup || subtotal === 0 || subtotal >= threshold ? 0 : 2.5;
+    const tax = subtotal * 0.15;
+
+    return {
+      categories: CATS.map(c => ({
+        label: c.key, img: c.img,
+        onSelect: () => this.setState({ cat: c.key, query: '' })
+      })),
+      showTiles: !inCategory,
+      inCategory,
+      sectionTitle: searching ? 'Resultados' : (activeCat || 'Menú'),
+      clearCat: () => this.setState({ cat: null, query: '' }),
+      items: items.map(m => Object.assign({}, m, { price: this.money(m.price), onAdd: () => this.add(m.id) })),
+      isEmptyResults: items.length === 0,
+      query: this.state.query,
+      onQuery: e => this.setState({ query: e.target.value }),
+      cartCount: Object.values(this.state.cart).reduce((a, b) => a + b, 0),
+      toggleCart: () => this.setState(s => ({ cartOpen: !s.cartOpen })),
+      drawerStyle: 'position: fixed; top: 0; right: 0; bottom: 0; width: 376px; max-width: 92vw; background: #fff; z-index: 40; display: flex; flex-direction: column; box-shadow: -18px 0 46px rgba(0,0,0,0.16); transition: transform 260ms ease; transform: translateX(' +
+        (this.state.cartOpen ? '0' : '105%') + ');',
+      cartLines, cartEmpty: cartLines.length === 0,
+      subtotal: this.money(subtotal),
+      shipping: ship === 0 ? 'Gratis' : this.money(ship),
+      tax: this.money(tax),
+      total: this.money(subtotal + ship + tax),
+      freeHint: isPickup ? 'Retiro en el local que elijas al pagar.' : subtotal >= threshold ? 'Tenés envío gratis en este pedido.' : 'Envío gratis desde ' + this.money(threshold) + '.',
+      modeLabel: isPickup ? 'PARA LLEVAR' : 'A DOMICILIO',
+      pillStyle: 'position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: #0E7C41; transition: transform 200ms ease; transform: translateX(' + (isPickup ? '100%' : '0') + ');',
+      setDelivery: () => this.setState({ mode: 'delivery' }),
+      setPickup: () => this.setState({ mode: 'pickup' }),
+      showPromoPair: this.props.showPromoPair ?? true
+    };
+  }
+}
+
+</script>
+</body>
+</html>
