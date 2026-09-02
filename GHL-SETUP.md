@@ -97,7 +97,7 @@ inside GoHighLevel for the widget to load.
 
 | Item | Value |
 |---|---|
-| Live URL | https://elhornero.conciergeai.space |
+| Live URL | https://elhornero.conciergeai.space (HTTPS enforced since 2026-09-02; http redirects) |
 | Source repo | https://github.com/jonathanlealvibe/el-hornero-site (branch `main`) |
 | Hosting | GitHub Pages, served from branch `gh-pages` (built `dist/`) |
 | DNS | Hostinger: CNAME `elhornero` → `jonathanlealvibe.github.io` (added 2026-09-02) |
