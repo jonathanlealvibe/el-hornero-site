@@ -2,3 +2,6 @@ node_modules
 dist
 .DS_Store
 *.local
+El_Hornero_Voice_Agent_System_Prompt_v2.md
+El_Hornero_Base_de_Conocimiento.md
+app/
