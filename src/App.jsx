@@ -71,7 +71,7 @@ export default function App() {
   const freeHint = isPickup
     ? 'Retiro en el local que elijas al pagar.'
     : subtotal >= FREE_DELIVERY_OVER
-      ? 'Tenés envío gratis en este pedido.'
+      ? 'Tienes envío gratis en este pedido.'
       : 'Envío gratis desde ' + money(FREE_DELIVERY_OVER) + '.'
 
   const selectCat = (key) => {
@@ -188,7 +188,7 @@ export default function App() {
         {inCategory && items.length === 0 && (
           <div className="empty">
             <p className="empty-title">Sin resultados</p>
-            <p>Probá con otra categoría o cambiá la búsqueda.</p>
+            <p>Prueba con otra categoría o cambia la búsqueda.</p>
           </div>
         )}
       </section>
@@ -253,7 +253,7 @@ export default function App() {
             </div>
           ))}
           {cartLines.length === 0 && (
-            <div className="drawer-empty">Tu pedido está vacío.<br />Elegí una categoría del menú para empezar.</div>
+            <div className="drawer-empty">Tu pedido está vacío.<br />Elige una categoría del menú para empezar.</div>
           )}
         </div>
 
