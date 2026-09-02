@@ -132,3 +132,17 @@ The agent and widget now read as El Hornero's order-taker, in Ecuadorian Spanish
 | Bubble (returning) | ¡Qué gusto verte de nuevo, {{name}}! ¿Lo de siempre o probamos algo nuevo? 🍕 |
 
 Site copy was also switched from voseo ("Tenés", "Probá", "Elegí") to tú forms for Ecuador.
+
+## Cédula → CRM (added 2026-09-02)
+
+| Item | Value |
+|---|---|
+| Custom field | **Cédula** — Contact object, folder "Additional Info", type Single line, key `{{contact.cedula}}` |
+| Agent action | "Guardar cedula del cliente" — Update contact field, **during the call**, mode Replace Value, target field Cédula. Instruction: save digits only (10 for cédula, 13 for RUC), confirm in groups of 2–3 digits, skip if "consumidor final". Examples: 0912345678, 1712345678001 |
+| Widget contact form | Enabled (Nombre + Teléfono required) so every web caller becomes a contact before the call; the cédula action then writes to that contact. Prefilled message: "Quiero hacer un pedido". |
+| Agent greeting | Aligned with the expert's Camila prompt: "¡Hola, El Hornero, habla Camila! ¿Su pedido es a domicilio o para retirar?" |
+
+The expert's prompt (already loaded) lists the other fields Camila should capture:
+modalidad, dirección completa, local asignado, pedido detallado, subtotal, forma de pago,
+cambio para, tipo de factura, correo factura, notas de alérgenos. Create each as a contact
+custom field and add one "Update contact field" action per field, same as the cédula one.
