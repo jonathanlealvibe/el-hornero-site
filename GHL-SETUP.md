@@ -162,3 +162,14 @@ custom field and add one "Update contact field" action per field, same as the c�
 | DNS | Hostinger CNAME `hornero` → `jonathanlealvibe.github.io` |
 | Source | `app/` folder in this project (index.html, manifest.json, sw.js, icons/) |
 | "Pedir ahora" | opens the Voice AI widget on the page; set `PHONE` in index.html to switch to a tel: link once a number exists |
+
+## Estado 2026-09-02 (tarde) — app completa sin compras
+
+- **Campos personalizados (Contact) completos:** cedula, modalidad, direccion_completa, local_asignado, pedido_detallado, subtotal, forma_de_pago, cambio_para, tipo_factura, correo_factura, notas_alergenos, app_enviada (folder Additional Info; modalidad quedó en folder Contact).
+- **Sitio = app instalable** (https://elhornero.conciergeai.space): manifest, íconos, service worker, botón "Instalar app".
+- **Checkout** (`#/checkout`): nombre, celular, cédula/RUC, dirección + referencia + sector, pago (efectivo con cambio / transferencia / tarjeta-Payphone), factura (consumidor final o con datos + correo).
+- **Seguimiento** (`#/pedido/<id>`): estados Recibido → En el horno → En camino → Entregado, mapa OpenStreetMap con casa y motorizado en vivo, recibo, "Descargar recibo (PDF)" (imprime), "Compartir por WhatsApp".
+- **Repartidor** (`#/repartidor/<id>`): comparte GPS del celular cada pocos segundos y marca "Entregado".
+- **Backend** en `backend/` (Cloudflare Worker + KV, gratis). Hasta desplegarlo el sitio corre en modo demostración: pedidos en el navegador y motorizado simulado (ruta La Carolina, Quito). Para activarlo: `backend/README.md` y poner `window.EH_API` en index.html.
+- **Pago con tarjeta:** el botón "Pagar" está listo para conectar Payphone/Kushki (Ecuador); requiere cuenta de comercio del cliente. Hoy marca el pedido como pagado (demo).
+- **Pendiente del cliente:** WhatsApp Business (Meta) para confirmaciones y recibo por mensaje; cuenta Payphone/Kushki; cuenta Cloudflare (o la de Abba) para el backend.
