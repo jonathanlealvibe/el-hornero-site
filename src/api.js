@@ -14,13 +14,24 @@ async function http(method, path, body) {
   return r.json()
 }
 
-// Quito demo route (Local La Carolina -> customer), used only in demo mode.
-const DEMO_ROUTE = [[-0.1807, -78.4869], [-0.1830, -78.4860], [-0.1858, -78.4842], [-0.1885, -78.4831], [-0.1912, -78.4818], [-0.1940, -78.4802]]
+// Demo mode: the rider leaves from the La Carolina local and rides in a straight line to the customer's address.
+const LOCAL = { lat: -0.1807, lng: -78.4869 }
+const DEFAULT_DEST = { lat: -0.1940, lng: -78.4802 }
+async function geocode(addr) {
+  if (!addr?.calle) return null
+  try {
+    const q = encodeURIComponent(`${addr.calle}, ${addr.sector || 'Quito'}, Ecuador`)
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`, { headers: { 'accept-language': 'es' } })
+    const j = await r.json(); if (!j[0]) return null
+    return { lat: +j[0].lat, lng: +j[0].lon }
+  } catch { return null }
+}
 
 export async function createOrder(order) {
   if (!DEMO) return http('POST', '/orders', order)
   const id = uid(); const all = read()
-  all[id] = { id, ...order, status: 'recibido', createdAt: Date.now(), rider: { lat: DEMO_ROUTE[0][0], lng: DEMO_ROUTE[0][1], at: Date.now() }, dest: { lat: DEMO_ROUTE[DEMO_ROUTE.length - 1][0], lng: DEMO_ROUTE[DEMO_ROUTE.length - 1][1] } }
+  const dest = (order.modalidad === 'A domicilio' && await geocode(order.direccion)) || (order.modalidad === 'A domicilio' ? DEFAULT_DEST : LOCAL)
+  all[id] = { id, ...order, status: 'recibido', createdAt: Date.now(), rider: { ...LOCAL, at: Date.now() }, dest, geocoded: dest !== DEFAULT_DEST && dest !== LOCAL }
   write(all); return all[id]
 }
 
@@ -32,8 +43,10 @@ export async function getOrder(id) {
   const status = o.paid === false && o.payMethod === 'tarjeta' ? 'pendiente_pago' : t < 1 ? 'recibido' : t < 2 ? 'horno' : t < 6 ? 'camino' : 'entregado'
   let rider = o.rider
   if (status === 'camino') {
-    const f = Math.min(1, (t - 2) / 4); const seg = f * (DEMO_ROUTE.length - 1); const i = Math.min(DEMO_ROUTE.length - 2, Math.floor(seg)); const k = seg - i
-    rider = { lat: DEMO_ROUTE[i][0] + (DEMO_ROUTE[i + 1][0] - DEMO_ROUTE[i][0]) * k, lng: DEMO_ROUTE[i][1] + (DEMO_ROUTE[i + 1][1] - DEMO_ROUTE[i][1]) * k, at: Date.now() }
+    const f = Math.min(1, (t - 2) / 4)
+    // slight curve so it does not look like a ruler line
+    const bend = Math.sin(f * Math.PI) * 0.004
+    rider = { lat: LOCAL.lat + (o.dest.lat - LOCAL.lat) * f + bend, lng: LOCAL.lng + (o.dest.lng - LOCAL.lng) * f - bend, at: Date.now() }
   } else if (status === 'entregado') rider = { ...o.dest, at: Date.now() }
   return { ...o, status, rider }
 }
