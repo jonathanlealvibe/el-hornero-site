@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getOrder, updateOrder, STATUS_LABEL, DEMO } from '../api.js'
+import { getOrder, updateOrder, STATUS_LABEL, DEMO, demoJump, demoFast } from '../api.js'
 import Map from './Map.jsx'
 
 const money = (n) => '$' + Number(n).toFixed(2)
@@ -11,7 +11,7 @@ export default function Order({ id }) {
   useEffect(() => {
     let alive = true
     const tick = async () => { const r = await getOrder(id); if (!alive) return; if (!r) setMissing(true); else setO(r) }
-    tick(); const t = setInterval(tick, 4000); return () => { alive = false; clearInterval(t) }
+    tick(); const t = setInterval(tick, 1500); return () => { alive = false; clearInterval(t) }
   }, [id])
 
   if (missing) return <section className="page"><a href="#/" className="back-link">← Volver al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
@@ -68,7 +68,15 @@ export default function Order({ id }) {
           <a className="btn-secondary" href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer">Compartir por WhatsApp</a>
         </div>
       </div>
-      {DEMO && <p className="demo-note">Modo demostración: el motorizado se simula. Con el servidor activo, la ubicación viene del celular del repartidor.</p>}
+      {DEMO && (
+        <div className="demo-bar">
+          <span>Demo</span>
+          <button className="btn-secondary" onClick={async () => { const n = STEPS[Math.min(STEPS.length - 1, Math.max(0, stepIdx) + 1)]; await demoJump(id, n); setO(await getOrder(id)) }} disabled={o.status === 'entregado'}>⏭ Siguiente paso</button>
+          <button className="btn-secondary" onClick={async () => { await demoFast(id); setO(await getOrder(id)) }}>▶ Demo rápida (30 s)</button>
+          <button className="btn-secondary" onClick={async () => { await demoJump(id, 'recibido'); setO(await getOrder(id)) }}>↺ Reiniciar</button>
+          <p className="demo-note">Modo demostración: el motorizado se simula. Con el servidor activo, la ubicación viene del celular del repartidor.</p>
+        </div>
+      )}
     </section>
   )
 }

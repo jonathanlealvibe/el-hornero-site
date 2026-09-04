@@ -28,7 +28,7 @@ export async function getOrder(id) {
   if (!DEMO) return http('GET', `/orders/${id}`)
   const all = read(); const o = all[id]; if (!o) return null
   // simulate progress: recibido -> horno (1 min) -> camino (2 min) -> entregado (6 min)
-  const t = (Date.now() - o.createdAt) / 60000
+  const t = ((Date.now() - o.createdAt) / 60000) * (o.speed || 1)
   const status = o.paid === false && o.payMethod === 'tarjeta' ? 'pendiente_pago' : t < 1 ? 'recibido' : t < 2 ? 'horno' : t < 6 ? 'camino' : 'entregado'
   let rider = o.rider
   if (status === 'camino') {
@@ -54,4 +54,18 @@ export const STATUS_LABEL = {
   horno: 'En el horno',
   camino: 'En camino',
   entregado: 'Entregado',
+}
+
+// Demo helpers (demo mode only)
+const STAGE_MIN = { recibido: 0, horno: 1, camino: 2, entregado: 6 }
+export async function demoJump(id, stage) {
+  const all = read(); const o = all[id]; if (!o) return null
+  const speed = o.speed || 1
+  o.createdAt = Date.now() - (STAGE_MIN[stage] * 60000) / speed
+  if (stage === 'camino') o.createdAt -= (0.2 * 60000) / speed
+  write(all); return o
+}
+export async function demoFast(id) {
+  const all = read(); const o = all[id]; if (!o) return null
+  o.speed = 12; o.createdAt = Date.now(); write(all); return o   // 6 min -> 30 s
 }
