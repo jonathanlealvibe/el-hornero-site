@@ -48,7 +48,7 @@ export default function Order({ id }) {
       {o.modalidad === 'A domicilio' && o.dest && (
         <div className="track">
           <div className="track-head"><b>{o.status === 'camino' ? '🛵 Tu motorizado va en camino' : o.status === 'entregado' ? '✅ Entregado' : '🏠 Tu dirección'}</b>
-            {o.rider?.at && <span className="muted">actualizado {Math.max(0, Math.round((Date.now() - o.rider.at) / 1000))} s</span>}</div>
+            {o.status === 'camino' && o.rider?.at && <span className="muted">actualizado hace {Math.max(0, Math.round((Date.now() - o.rider.at) / 1000))} s</span>}</div>
           <Map rider={o.status === 'camino' || o.status === 'entregado' ? o.rider : null} dest={o.dest} />
           <p className="muted small">{o.direccion?.calle}{o.direccion?.referencia ? ` · ${o.direccion.referencia}` : ''} · {o.direccion?.sector}</p>
         </div>
