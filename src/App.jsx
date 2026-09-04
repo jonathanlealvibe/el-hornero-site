@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CATS, MENU, FREE_DELIVERY_OVER, DELIVERY_FEE, IVA } from './data.js'
 import InstallButton from './InstallButton.jsx'
+import { useRoute, go } from './router.js'
+import Checkout from './pages/Checkout.jsx'
+import Order from './pages/Order.jsx'
+import Driver from './pages/Driver.jsx'
 
 const money = (n) => '$' + n.toFixed(2)
 const CART_KEY = 'elhornero.cart'
@@ -14,7 +18,7 @@ function loadCart() {
   }
 }
 
-export default function App() {
+function Home() {
   const [cat, setCat] = useState(null)
   const [query, setQuery] = useState('')
   const [cart, setCart] = useState(loadCart)
@@ -265,10 +269,32 @@ export default function App() {
           <span className="row">Envío <span>{ship === 0 ? 'Gratis' : money(ship)}</span></span>
           <span className="row">IVA 15% <span>{money(tax)}</span></span>
           <span className="row total">Total <span>{money(total)}</span></span>
-          <button type="button" className="btn-pay" disabled={cartLines.length === 0}>Continuar al pago</button>
+          <button type="button" className="btn-pay" disabled={cartLines.length === 0} onClick={() => { try { localStorage.setItem('elhornero.mode', mode) } catch { /* ignore */ } setCartOpen(false); go('/checkout') }}>Continuar al pago</button>
           <span className="hint">{freeHint}</span>
         </div>
       </aside>
     </div>
   )
+}
+
+
+function CheckoutRoute() {
+  const cart = loadCart()
+  let mode = 'delivery'
+  try { mode = localStorage.getItem('elhornero.mode') || 'delivery' } catch { /* ignore */ }
+  const lines = Object.keys(cart).map((id) => { const m = MENU.find((x) => x.id === id); return { id, name: m.name, qty: cart[id], price: m.price } })
+  const subtotal = lines.reduce((t, l) => t + l.price * l.qty, 0)
+  const shipping = mode === 'pickup' || subtotal === 0 || subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE
+  const tax = subtotal * IVA
+  if (lines.length === 0) return <section className="page"><a href="#/" className="back-link">← Volver al menú</a><p>Tu pedido está vacío.</p></section>
+  return <Checkout lines={lines} mode={mode} subtotal={subtotal} shipping={shipping} tax={tax} total={subtotal + shipping + tax}
+    onPlaced={() => { try { localStorage.removeItem(CART_KEY) } catch { /* ignore */ } }} />
+}
+
+export default function App() {
+  const { page, id } = useRoute()
+  if (page === 'checkout') return <CheckoutRoute />
+  if (page === 'pedido' && id) return <Order id={id} />
+  if (page === 'repartidor' && id) return <Driver id={id} />
+  return <Home />
 }
