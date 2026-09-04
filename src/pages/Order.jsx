@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getOrder, updateOrder, STATUS_LABEL, DEMO, demoJump, demoFast } from '../api.js'
+import { getOrder, updateOrder, STATUS_LABEL, STATUS_LABEL_PICKUP, DEMO, demoJump, demoFast } from '../api.js'
 import Map from './Map.jsx'
 
 const money = (n) => '$' + Number(n).toFixed(2)
@@ -17,6 +17,7 @@ export default function Order({ id }) {
   if (missing) return <section className="page"><a href="#/" className="back-link">← Volver al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
   if (!o) return <section className="page"><p>Cargando tu pedido…</p></section>
 
+  const LABEL = o.modalidad === 'A domicilio' ? STATUS_LABEL : STATUS_LABEL_PICKUP
   const stepIdx = STEPS.indexOf(o.status)
   const payNow = async () => {
     // Payphone / Kushki go here. Until the merchant account exists, mark as paid for the demo.
@@ -30,7 +31,7 @@ export default function Order({ id }) {
       <a href="#/" className="back-link">← Volver al menú</a>
       <div className="order-head">
         <div><span className="eyebrow">Pedido</span><h2 className="page-title">{id}</h2></div>
-        <span className={'status-pill s-' + o.status}>{STATUS_LABEL[o.status]}</span>
+        <span className={'status-pill s-' + o.status}>{LABEL[o.status]}</span>
       </div>
 
       {o.status === 'pendiente_pago' && (
@@ -42,9 +43,16 @@ export default function Order({ id }) {
       )}
 
       <ol className="timeline">
-        {STEPS.map((s, i) => <li key={s} className={i <= stepIdx ? 'done' : ''}><span className="dot" />{STATUS_LABEL[s]}</li>)}
+        {STEPS.map((s, i) => <li key={s} className={i <= stepIdx ? 'done' : ''}><span className="dot" />{LABEL[s]}</li>)}
       </ol>
 
+      {o.modalidad !== 'A domicilio' && o.dest && (
+        <div className="track">
+          <div className="track-head"><b>🏪 Para llevar · retiras en el local</b></div>
+          <Map rider={null} dest={o.dest} />
+          <p className="muted small">Local La Carolina · Av. Amazonas y Naciones Unidas, Quito. Te avisamos cuando esté listo.</p>
+        </div>
+      )}
       {o.modalidad === 'A domicilio' && o.dest && (
         <div className="track">
           <div className="track-head"><b>{o.status === 'camino' ? '🛵 Tu motorizado va en camino' : o.status === 'entregado' ? '✅ Entregado' : '🏠 Tu dirección'}</b>

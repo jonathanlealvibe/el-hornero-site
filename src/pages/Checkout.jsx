@@ -4,7 +4,11 @@ import { go } from '../router.js'
 
 const money = (n) => '$' + n.toFixed(2)
 
-export default function Checkout({ lines, mode, subtotal, shipping, tax, total, onPlaced }) {
+export default function Checkout({ lines, mode: initialMode, subtotal, tax: _tax, onPlaced }) {
+  const [mode, setMode] = useState(initialMode || 'delivery')
+  const shipping = mode === 'pickup' || subtotal === 0 || subtotal >= 25 ? 0 : 2.5
+  const tax = subtotal * 0.15
+  const total = subtotal + shipping + tax
   const [f, setF] = useState({ nombre: '', telefono: '', cedula: '', direccion: '', referencia: '', sector: '', pago: 'efectivo', cambio: '', factura: 'consumidor_final', correo: '' })
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -31,6 +35,11 @@ export default function Checkout({ lines, mode, subtotal, shipping, tax, total, 
       <h2 className="page-title">Confirma tu pedido</h2>
       <div className="checkout-grid">
         <form className="form" onSubmit={submit}>
+          <h3>¿Cómo lo quieres?</h3>
+          <div className="radio-row">
+            <label className={'chip' + (mode === 'delivery' ? ' on' : '')}><input type="radio" name="modo" checked={mode === 'delivery'} onChange={() => setMode('delivery')} />🛵 A domicilio</label>
+            <label className={'chip' + (mode === 'pickup' ? ' on' : '')}><input type="radio" name="modo" checked={mode === 'pickup'} onChange={() => setMode('pickup')} />🏪 Para llevar</label>
+          </div>
           <h3>Tus datos</h3>
           <label>Nombre<input value={f.nombre} onChange={set('nombre')} required placeholder="Ej. Mauricio" /></label>
           <label>Celular<input value={f.telefono} onChange={set('telefono')} required inputMode="tel" placeholder="09 9999 9999" /></label>

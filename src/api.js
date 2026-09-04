@@ -48,6 +48,7 @@ export async function pushRiderLocation(id, lat, lng) {
   return updateOrder(id, { rider: { lat, lng, at: Date.now() }, status: 'camino' })
 }
 
+export const STATUS_LABEL_PICKUP = { pendiente_pago: 'Esperando tu pago', recibido: 'Pedido recibido', horno: 'En el horno', camino: 'Listo para retirar', entregado: 'Entregado' }
 export const STATUS_LABEL = {
   pendiente_pago: 'Esperando tu pago',
   recibido: 'Pedido recibido',
