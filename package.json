@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && rm -rf \"$TMPDIR/ghp\" && git worktree prune && git worktree add -q \"$TMPDIR/ghp\" gh-pages && rsync -a --exclude .git dist/ \"$TMPDIR/ghp/\" && cd \"$TMPDIR/ghp\" && git add -A && git -c user.name=\"Jonathan Leal\" -c user.email=\"jonlealfinances@gmail.com\" commit -qm \"Deploy site\" ; git push origin gh-pages; cd - >/dev/null; git worktree remove -f \"$TMPDIR/ghp\""
+    "deploy": "npm run build && rm -rf \"$TMPDIR/ghp\" && git worktree prune && git worktree add -q \"$TMPDIR/ghp\" gh-pages && rsync -a --checksum --exclude .git dist/ \"$TMPDIR/ghp/\" && cd \"$TMPDIR/ghp\" && git add -A && git -c user.name=\"Jonathan Leal\" -c user.email=\"jonlealfinances@gmail.com\" commit -qm \"Deploy site\" ; git push origin gh-pages; cd - >/dev/null; git worktree remove -f \"$TMPDIR/ghp\""
   },
   "dependencies": {
     "react": "^19.2.8",
