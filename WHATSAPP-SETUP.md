@@ -82,3 +82,75 @@ Luego: acción **Send WhatsApp Message** → número Concierge → plantilla →
 - Método de pago en la WABA antes del 30 de septiembre de 2026: desde el 1 de octubre Meta
   empieza a cobrar los mensajes de servicio y las WABA sin método de pago dejan de entregarlos.
 - Cuenta Payphone (RUC + cuenta bancaria) cuando se quiera cobro real en vez del pago falso.
+
+## Prueba real — 12 de septiembre de 2026, 9:16 AM (GMT-5)
+
+**Resultado: funcionó.** El mensaje salió por WhatsApp y llegó al celular.
+
+Lo que se usó en vez de las plantillas: el **atajo de la ventana de 24 horas**. El contacto
+"Jon" (jonlealfinances+wa@gmail.com) escribió "Hola" por WhatsApp el 11 de septiembre a las
+8:26 PM y 8:37 PM. Eso abrió la ventana hasta las 8:37 PM del día 12. Dentro de esa ventana
+Meta permite **texto libre**, así que la acción usa la plantilla `None - Free form message`:
+sin aprobación de Meta, sin plantillas, sin costo premium.
+
+### El workflow que quedó publicado
+
+| | |
+|---|---|
+| Nombre | **El Hornero - Links de pago y seguimiento** |
+| ID | `36d80e1e-aede-44a9-b66d-0e3a16340888` |
+| Subcuenta | Abba Systems `IETgmp0eXuzBm7mLOlnV` |
+| Estado | **Published** |
+| Trigger | **Customer Replied**, filtrado a `Reply channel is WhatsApp` (trigger estándar, no premium) |
+| Acción 1 | WhatsApp · plantilla `None - Free form message` · Enable branches OFF · desde **+593 96 894 3661 - default** |
+
+Cuerpo del mensaje (el chip `{{contact.first_name}}` resolvió bien, llegó como "Hola Jon"):
+
+```
+Hola {{contact.first_name}}, tu pedido EHDEMO01 de El Hornero quedo reservado.
+Total a pagar: 21.25 dolares. Toca el link para pagar con tarjeta y lo mandamos
+al horno enseguida: <link /p/>
+-- Y aqui puedes seguir a tu motorizado en vivo: <link /s/>
+```
+
+### Registro de la ejecución
+
+| Hora | Evento | Estado |
+|---|---|---|
+| 9:16:24 AM | Add to workflow | Added To Workflow |
+| 9:16:28 AM | WhatsApp | **Executed** (Event Status: Success) |
+| 9:16:29 AM | Removed by - End Of Workflow | Finished |
+
+En Conversaciones el mensaje aparece a las 09:16 AM con **doble check = entregado**.
+
+### Lo que se verificó de los links
+
+Los dos links viajaron enteros, sin que WhatsApp los cortara, y abren bien:
+
+- `/p/EHDEMO01.<payload>` → checkout falso: **$21.25**, "Pedido EHDEMO01 · Mauricio",
+  formulario de tarjeta, aviso "Demostración: no se procesa ningún cobro".
+- `/s/EHDEMO01.<payload>` → seguimiento: **EHDEMO01**, chip "Esperando tu pago",
+  aviso "Falta tu pago: $21.25" con botón Pagar, la línea de 4 pasos y el mapa con
+  la casa y el motorizado.
+
+Detalle menor: el geocodificador no ubicó "Av. Amazonas y Naciones Unidas" y la página
+muestra el aviso "dirección no ubicada en el mapa, se muestra un punto de referencia".
+El mapa igual sale; solo el pin cae en un punto aproximado.
+
+### Lo único que falta comprobar
+
+La prueba se corrió con el botón **Test workflow**, que **salta el trigger** y mete el
+contacto directo en el workflow. O sea: está probado que la *acción* manda el WhatsApp y que
+los links llegan y abren. Falta ver el *trigger* dispararse solo.
+
+Para comprobarlo basta que alguien escriba cualquier cosa por WhatsApp al **096 894 3661**.
+Ahí el workflow debería enrolarlo solo y contestar con los dos links. Se ve en
+Automation → El Hornero - Links de pago y seguimiento → Enrollment history.
+
+### Ojo con la ventana
+
+Fuera de las 24 horas desde el último mensaje del cliente, el texto libre **deja de entregarse**
+y vuelven a hacer falta las dos plantillas Utility de más arriba. Para el demo no estorba,
+porque el trigger es justamente un mensaje entrante: el cliente escribe, la ventana se abre,
+el workflow contesta. Para la producción real (mandar los links después de una *llamada*,
+sin que el cliente escriba) sí hay que crear las plantillas.
