@@ -35,9 +35,14 @@ export async function createOrder(order) {
   write(all); return all[id]
 }
 
-export async function getOrder(id) {
+export async function getOrder(id, packed) {
   if (!DEMO) return http('GET', `/orders/${id}`)
-  const all = read(); const o = all[id]; if (!o) return null
+  const all = read()
+  if (!all[id] && packed) {
+    const fromLink = unpackOrder(packed)
+    if (fromLink && fromLink.id) { all[id] = fromLink; write(all) }
+  }
+  const o = all[id]; if (!o) return null
   // simulate progress: recibido -> horno (1 min) -> camino (2 min) -> entregado (6 min)
   const t = ((Date.now() - o.createdAt) / 60000) * (o.speed || 1)
   const status = o.paid === false && o.payMethod === 'tarjeta' ? 'pendiente_pago' : t < 1 ? 'recibido' : t < 2 ? 'horno' : t < 6 ? 'camino' : 'entregado'
@@ -60,6 +65,36 @@ export async function pushRiderLocation(id, lat, lng) {
   if (!DEMO) return http('POST', `/orders/${id}/location`, { lat, lng })
   return updateOrder(id, { rider: { lat, lng, at: Date.now() }, status: 'camino' })
 }
+
+// ---- Portable orders: pack the order into the link so it opens on ANY phone ----
+const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/')))) 
+
+export function packOrder(o) {
+  const slim = {
+    i: o.id, n: o.cliente?.nombre, t: o.cliente?.telefono, c: o.cliente?.cedula,
+    m: o.modalidad, d: o.direccion, it: (o.items || []).map((x) => [x.nombre, x.cantidad, x.precio]),
+    s: o.subtotal, e: o.envio, v: o.iva, g: o.total, p: o.payMethod, cp: o.cambioPara, f: o.factura,
+    ca: o.createdAt, ds: o.dest, pd: o.paid ? 1 : 0, sp: o.speed || 1,
+  }
+  try { return b64e(JSON.stringify(slim)) } catch { return '' }
+}
+
+export function unpackOrder(packed) {
+  try {
+    const s = JSON.parse(b64d(packed))
+    return {
+      id: s.i, cliente: { nombre: s.n, telefono: s.t, cedula: s.c }, modalidad: s.m, direccion: s.d,
+      items: (s.it || []).map(([nombre, cantidad, precio]) => ({ nombre, cantidad, precio })),
+      subtotal: s.s, envio: s.e, iva: s.v, total: s.g, payMethod: s.p, cambioPara: s.cp, factura: s.f,
+      createdAt: s.ca, dest: s.ds, paid: !!s.pd, speed: s.sp || 1, fromLink: true,
+    }
+  } catch { return null }
+}
+
+// Absolute links you can paste into WhatsApp — they carry the order with them.
+export function trackUrl(o) { return `${location.origin}${location.pathname}#/pedido/${o.id}?d=${packOrder(o)}` }
+export function payUrl(o) { return `${location.origin}${location.pathname}#/pago/${o.id}?d=${packOrder(o)}` }
 
 export const STATUS_LABEL_PICKUP = { pendiente_pago: 'Esperando tu pago', recibido: 'Pedido recibido', horno: 'En el horno', camino: 'Listo para retirar', entregado: 'Entregado' }
 export const STATUS_LABEL = {

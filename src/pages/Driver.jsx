@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { getOrder, pushRiderLocation, updateOrder, STATUS_LABEL } from '../api.js'
 
-export default function Driver({ id }) {
+export default function Driver({ id, packed }) {
   const [o, setO] = useState(null)
   const [sharing, setSharing] = useState(false)
   const [last, setLast] = useState(null)
   const [err, setErr] = useState('')
   const watch = useRef(null)
 
-  useEffect(() => { getOrder(id).then(setO) }, [id])
+  useEffect(() => { getOrder(id, packed).then(setO) }, [id, packed])
 
   const start = () => {
     if (!navigator.geolocation) { setErr('Este celular no permite ubicación.'); return }

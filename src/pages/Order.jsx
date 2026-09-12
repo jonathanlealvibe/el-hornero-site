@@ -1,30 +1,28 @@
 import { useEffect, useState } from 'react'
-import { getOrder, updateOrder, STATUS_LABEL, STATUS_LABEL_PICKUP, DEMO, demoJump, demoFast } from '../api.js'
+import { getOrder, updateOrder, STATUS_LABEL, STATUS_LABEL_PICKUP, DEMO, demoJump, demoFast, trackUrl, payUrl } from '../api.js'
 import Map from './Map.jsx'
 
 const money = (n) => '$' + Number(n).toFixed(2)
 const STEPS = ['recibido', 'horno', 'camino', 'entregado']
 
-export default function Order({ id }) {
+export default function Order({ id, packed }) {
   const [o, setO] = useState(null)
   const [missing, setMissing] = useState(false)
   useEffect(() => {
     let alive = true
-    const tick = async () => { const r = await getOrder(id); if (!alive) return; if (!r) setMissing(true); else setO(r) }
+    const tick = async () => { const r = await getOrder(id, packed); if (!alive) return; if (!r) setMissing(true); else setO(r) }
     tick(); const t = setInterval(tick, 1500); return () => { alive = false; clearInterval(t) }
-  }, [id])
+  }, [id, packed])
 
   if (missing) return <section className="page"><a href="#/" className="back-link">← Volver al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
   if (!o) return <section className="page"><p>Cargando tu pedido…</p></section>
 
   const LABEL = o.modalidad === 'A domicilio' ? STATUS_LABEL : STATUS_LABEL_PICKUP
   const stepIdx = STEPS.indexOf(o.status)
-  const payNow = async () => {
-    // Payphone / Kushki go here. Until the merchant account exists, mark as paid for the demo.
-    const r = await updateOrder(id, { paid: true, paidAt: Date.now() }); setO({ ...o, ...r })
-  }
-  const shareUrl = `${location.origin}/#/pedido/${id}`
-  const waText = encodeURIComponent(`Hola, confirmo mi pedido ${id} de El Hornero. Total ${money(o.total)}. Seguimiento: ${shareUrl}`)
+  const track = trackUrl(o)
+  const pay = payUrl(o)
+  const waPay = encodeURIComponent(`Hola ${o.cliente?.nombre || ''}, aquí está el link para pagar tu pedido ${id} de El Hornero 🍕 Total ${money(o.total)}: ${pay}`)
+  const waTrack = encodeURIComponent(`Tu pedido ${id} ya va en camino 🛵 Sigue a tu motorizado en vivo aquí: ${track}`)
 
   return (
     <section className="page order">
@@ -34,11 +32,11 @@ export default function Order({ id }) {
         <span className={'status-pill s-' + o.status}>{LABEL[o.status]}</span>
       </div>
 
-      {o.status === 'pendiente_pago' && (
+      {!o.paid && o.payMethod === 'tarjeta' && (
         <div className="paybox">
-          <b>Total a pagar: {money(o.total)}</b>
-          <p>Pago con tarjeta a través de Payphone (Ecuador). Cuando el comercio active su cuenta, aquí aparece el botón oficial.</p>
-          <button className="btn-primary" onClick={payNow}>Pagar {money(o.total)}</button>
+          <b>Falta tu pago: {money(o.total)}</b>
+          <p>Paga con tarjeta para que tu pedido entre al horno.</p>
+          <a className="btn-primary" href={pay}>Pagar {money(o.total)}</a>
         </div>
       )}
 
@@ -73,7 +71,9 @@ export default function Order({ id }) {
         <div className="row muted"><span>Factura</span><span>{o.factura === 'con_datos' ? `con datos · ${o.cliente.cedula}` : 'consumidor final'}</span></div>
         <div className="receipt-actions">
           <button className="btn-secondary" onClick={() => window.print()}>Descargar recibo (PDF)</button>
-          <a className="btn-secondary" href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer">Compartir por WhatsApp</a>
+          <a className="btn-secondary" href={`https://wa.me/?text=${waTrack}`} target="_blank" rel="noreferrer">Enviar seguimiento por WhatsApp</a>
+          {!o.paid && <a className="btn-secondary" href={`https://wa.me/?text=${waPay}`} target="_blank" rel="noreferrer">Enviar link de pago por WhatsApp</a>}
+          <a className="btn-secondary" href={`#/repartidor/${id}?d=${packed || ''}`}>Abrir vista del repartidor</a>
         </div>
       </div>
       {DEMO && (

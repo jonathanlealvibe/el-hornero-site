@@ -5,6 +5,7 @@ import { useRoute, go } from './router.js'
 import Checkout from './pages/Checkout.jsx'
 import Order from './pages/Order.jsx'
 import Driver from './pages/Driver.jsx'
+import Pay from './pages/Pay.jsx'
 
 const money = (n) => '$' + n.toFixed(2)
 const CART_KEY = 'elhornero.cart'
@@ -292,9 +293,10 @@ function CheckoutRoute() {
 }
 
 export default function App() {
-  const { page, id } = useRoute()
+  const { page, id, d } = useRoute()
   if (page === 'checkout') return <CheckoutRoute />
-  if (page === 'pedido' && id) return <Order id={id} />
-  if (page === 'repartidor' && id) return <Driver id={id} />
+  if (page === 'pedido' && id) return <Order id={id} packed={d} />
+  if (page === 'pago' && id) return <Pay id={id} packed={d} />
+  if (page === 'repartidor' && id) return <Driver id={id} packed={d} />
   return <Home />
 }
