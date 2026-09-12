@@ -17,14 +17,33 @@ async function http(method, path, body) {
 // Demo mode: the rider leaves from the La Carolina local and rides in a straight line to the customer's address.
 const LOCAL = { lat: -0.1807, lng: -78.4869 }
 const DEFAULT_DEST = { lat: -0.1940, lng: -78.4802 }
-async function geocode(addr) {
-  if (!addr?.calle) return null
+async function geocodeOne(q) {
   try {
-    const q = encodeURIComponent(`${addr.calle}, ${addr.sector || 'Quito'}, Ecuador`)
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`, { headers: { 'accept-language': 'es' } })
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ec&q=${encodeURIComponent(q)}`, { headers: { 'accept-language': 'es' } })
     const j = await r.json(); if (!j[0]) return null
     return { lat: +j[0].lat, lng: +j[0].lon }
   } catch { return null }
+}
+
+// Ecuadorian addresses are often written as intersections ("X y Z"), which geocoders miss.
+// Try the full string, then each street alone, then the sector, then the city.
+async function geocode(addr) {
+  if (!addr?.calle) return null
+  const sector = (addr.sector || '').trim()
+  const city = sector.split(',').pop().trim() || 'Quito'
+  const calle = addr.calle.trim()
+  const parts = calle.split(/\s+y\s+/i).map((x) => x.trim()).filter(Boolean)
+  const tries = [
+    sector ? `${calle}, ${sector}` : `${calle}, ${city}`,
+    `${calle}, ${city}`,
+    ...parts.map((p) => `${p}, ${city}`),
+    sector ? `${sector}` : null,
+  ].filter(Boolean)
+  for (const q of tries) {
+    const hit = await geocodeOne(q)
+    if (hit) return hit
+  }
+  return null
 }
 
 export async function createOrder(order) {
