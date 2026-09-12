@@ -59,7 +59,13 @@ export async function getOrder(id, packed) {
   const all = read()
   if (!all[id] && packed) {
     const fromLink = unpackOrder(packed)
-    if (fromLink && fromLink.id) { all[id] = fromLink; write(all) }
+    if (fromLink && fromLink.id) {
+      // A demo link can be opened days after it was made: restart the clock so the
+      // customer always sees the order progress from the beginning.
+      const age = Date.now() - (fromLink.createdAt || 0)
+      if (!fromLink.createdAt || age > 2 * 60 * 60 * 1000) fromLink.createdAt = Date.now()
+      all[id] = fromLink; write(all)
+    }
   }
   const o = all[id]; if (!o) return null
   // simulate progress: recibido -> horno (1 min) -> camino (2 min) -> entregado (6 min)
