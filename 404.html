@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>el Hornero</title>
+<script>
+  // Clean URLs -> hash routes, so WhatsApp templates can use a fixed base URL.
+  //   /p/<payload>   -> #/pago/<id>?d=<payload>
+  //   /s/<payload>   -> #/pedido/<id>?d=<payload>
+  //   /r/<payload>   -> #/repartidor/<id>?d=<payload>
+  (function () {
+    var MAP = { p: 'pago', s: 'pedido', r: 'repartidor' };
+    var seg = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
+    var key = MAP[seg[0]];
+    if (key && seg[1]) {
+      var rest = seg.slice(1).join('/');
+      var i = rest.indexOf('.');            // <id>.<payload>
+      var id = i > -1 ? rest.slice(0, i) : rest;
+      var d = i > -1 ? rest.slice(i + 1) : '';
+      location.replace('/#/' + key + '/' + id + (d ? '?d=' + d : ''));
+      return;
+    }
+    location.replace('/');
+  })();
+</script>
+</head>
+<body></body>
+</html>
