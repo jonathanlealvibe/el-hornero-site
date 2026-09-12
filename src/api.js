@@ -112,8 +112,11 @@ export function unpackOrder(packed) {
 }
 
 // Absolute links you can paste into WhatsApp — they carry the order with them.
-export function trackUrl(o) { return `${location.origin}${location.pathname}#/pedido/${o.id}?d=${packOrder(o)}` }
-export function payUrl(o) { return `${location.origin}${location.pathname}#/pago/${o.id}?d=${packOrder(o)}` }
+// Clean form (/s/ID.payload) works via public/404.html and is what WhatsApp templates need.
+const clean = (prefix, o) => `${location.origin}/${prefix}/${o.id}.${packOrder(o)}`
+export function trackUrl(o) { return clean('s', o) }
+export function payUrl(o) { return clean('p', o) }
+export function driverUrl(o) { return clean('r', o) }
 
 export const STATUS_LABEL_PICKUP = { pendiente_pago: 'Esperando tu pago', recibido: 'Pedido recibido', horno: 'En el horno', camino: 'Listo para retirar', entregado: 'Entregado' }
 export const STATUS_LABEL = {
