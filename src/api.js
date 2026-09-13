@@ -231,7 +231,7 @@ export const WA = {
     `${url}`,
   seguimiento: (o, url) =>
     `🛵 *El Hornero*\n\n` +
-    `¡Su pedido ya salió${nombre(o)}!\n` +
+    `¡Su pedido ya salió${o.cliente?.nombre ? ', ' + o.cliente.nombre : ''}!\n` +
     `*${o.id}* va en camino` +
     (o.direccion?.sector ? ` a ${o.direccion.sector}` : '') + `.\n\n` +
     `Siga a su motorizado en el mapa en vivo 👇\n` +
