@@ -21,6 +21,14 @@
     var key = MAP[seg[0]];
     if (!key) { location.replace('/'); return; }
 
+    // /pagar/q/<datos>: el formato que arma el CRM con campos combinados.
+    // Los precios traen puntos, así que aquí no se parte por el primer punto.
+    if (seg[1] === 'q' && seg.length > 2) {
+      var datos = seg.slice(2).join('/');
+      try { datos = decodeURIComponent(datos); } catch (e) { /* se deja tal cual */ }
+      location.replace('/#/' + key + '/q?d=q.' + datos);
+      return;
+    }
     var rest = seg.slice(1).join('/') || (location.hash || '').replace(/^#/, '');
     if (!rest) { location.replace('/'); return; }
 
