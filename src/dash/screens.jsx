@@ -218,7 +218,7 @@ export function Hoy({ F, onNuevos }) {
           {tickets.length === 0
             ? <p className="d-empty"><strong>Nada en marcha.</strong>{hoyN ? 'Todo lo de hoy ya está entregado.' : 'El primer pedido aparece aquí solo.'}</p>
             : (
-              <div className={'d-tickets' + (tickets.length >= 5 ? ' dos' : '')}>
+              <div className="d-tickets">
                 {visibles.map((p, i) => {
                   const per = S.personaPorId(p.persona_id)
                   const nItems = S.estado().items.filter((x) => x.pedido_id === p.pedido_id).reduce((t, x) => t + x.cantidad, 0)
