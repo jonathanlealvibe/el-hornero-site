@@ -1,0 +1,183 @@
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import * as S from './store.js'
+import { estadoTexto } from './textos.js'
+import { hhmm, money } from './format.js'
+import { marcar } from './motion.js'
+
+/* ---------------------------------------------------------------- toast */
+
+const ToastCtx = createContext(() => {})
+export const useToast = () => useContext(ToastCtx)
+
+export function ToastHost({ children }) {
+  const [t, setT] = useState(null)
+  const timer = useRef(null)
+  const cerrar = useCallback(() => setT((x) => (x ? { ...x, saliendo: true } : x)), [])
+  const avisar = useCallback((texto, { deshacer, vida = deshacer ? 5000 : 2000 } = {}) => {
+    clearTimeout(timer.current)
+    setT({ texto, deshacer, vida, id: Date.now() })
+    timer.current = setTimeout(cerrar, vida)
+  }, [cerrar])
+  useEffect(() => {
+    if (!t?.saliendo) return
+    const x = setTimeout(() => setT(null), 170)
+    return () => clearTimeout(x)
+  }, [t])
+  const pausa = () => clearTimeout(timer.current)
+  const sigue = () => { if (t && !t.saliendo) timer.current = setTimeout(cerrar, 1500) }
+  return (
+    <ToastCtx.Provider value={avisar}>
+      {children}
+      {t && (
+        <div className={'d-toast' + (t.saliendo ? ' saliendo' : '')} role="status" style={{ '--vida': `${t.vida}ms` }}
+          onMouseEnter={pausa} onMouseLeave={sigue} onFocus={pausa} onBlur={sigue}>
+          <span>{t.texto}</span>
+          {t.deshacer && <button type="button" onClick={() => { t.deshacer(); clearTimeout(timer.current); cerrar() }}>Deshacer</button>}
+          <i className="d-toast__barra" key={t.id} aria-hidden />
+        </div>
+      )}
+    </ToastCtx.Provider>
+  )
+}
+
+/* -------------------------------------------------------------- diálogo */
+
+export function Dialogo({ titulo, children, onCerrar }) {
+  useEffect(() => {
+    const on = (e) => { if (e.key === 'Escape') onCerrar() }
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [onCerrar])
+  return (
+    <div className="d-dialogwrap" onClick={onCerrar}>
+      <div className="d-dialog" role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
+        <h2>{titulo}</h2>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------- estado del pedido */
+
+const MOTIVOS = ['El cliente se arrepintió', 'No se pudo entregar', 'Se tomó mal el pedido', 'Otro motivo']
+
+// La escalera: un toque avanza un paso, con Deshacer 5 s. Cancelar pide motivo.
+export function EstadoPedido({ pedido, compacto = false }) {
+  const avisar = useToast()
+  const [dialogo, setDialogo] = useState(false)
+  const [motivo, setMotivo] = useState(MOTIVOS[0])
+  const pasos = S.pasosDe(pedido)
+  const idx = pasos.indexOf(pedido.estado)
+  const cancelado = pedido.estado === 'cancelado'
+  const siguiente = idx >= 0 && idx < pasos.length - 1 ? pasos[idx + 1] : null
+  const anterior = idx > 0 ? pasos[idx - 1] : null
+
+  const ir = (estado, aviso = true) => {
+    const antes = pedido.estado
+    const ok = S.cambiarEstado(pedido.pedido_id, estado)
+    if (!ok) return
+    if (aviso) avisar(`${pedido.pedido_id} pasó a ${estadoTexto(estado, pedido.modalidad)}`, { deshacer: () => S.cambiarEstado(pedido.pedido_id, antes, { forzar: true }) })
+  }
+  const cancelar = () => {
+    S.cancelarPedido(pedido.pedido_id, motivo)
+    setDialogo(false)
+    avisar(`${pedido.pedido_id} quedó cancelado`)
+  }
+
+  if (compacto) {
+    return (
+      <span className="d-pasos" aria-label={`Estado: ${estadoTexto(pedido.estado, pedido.modalidad)}`}>
+        {pasos.map((p, i) => (
+          <button key={p} type="button" title={estadoTexto(p, pedido.modalidad)}
+            className={i < idx ? 'hecho' : i === idx ? 'actual' : ''}
+            disabled={cancelado || i <= idx}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (i === idx + 1) ir(p) }} />
+        ))}
+      </span>
+    )
+  }
+
+  return (
+    <div className="d-escalera">
+      {pasos.map((p, i) => {
+        const hecho = i < idx, actual = i === idx, sig = i === idx + 1
+        return (
+          <button key={p} type="button" aria-pressed={actual}
+            className={'d-escalera__paso' + (hecho ? ' hecho' : '') + (sig ? ' siguiente' : '')}
+            disabled={cancelado || (!sig)}
+            onClick={() => sig && ir(p)}>
+            <i /> {estadoTexto(p, pedido.modalidad)}{sig ? ' ›' : ''}
+            {pedido.historial?.[p] && <span className="d-escalera__hora">{hhmm(pedido.historial[p])}</span>}
+          </button>
+        )
+      })}
+      {!cancelado && (
+        <div className="d-escalera__mas">
+          {anterior && <button type="button" onClick={() => ir(anterior)}>Devolver un paso</button>}
+          <button type="button" className="peligro" onClick={() => setDialogo(true)}>Cancelar el pedido</button>
+        </div>
+      )}
+      {cancelado && <p className="d-quiet" style={{ fontSize: 13 }}>Cancelado{pedido.motivo_cancelacion ? `: ${pedido.motivo_cancelacion}` : ''}.</p>}
+      {dialogo && (
+        <Dialogo titulo={`¿Cancelar el pedido ${pedido.pedido_id}?`} onCerrar={() => setDialogo(false)}>
+          <div className="d-radios">
+            {MOTIVOS.map((m) => (
+              <label key={m}><input type="radio" name="motivo" checked={motivo === m} onChange={() => setMotivo(m)} /> {m}</label>
+            ))}
+          </div>
+          <p>Se restan {money(pedido.total_cobrado)} de lo cobrado hoy y el cliente deja de verlo en su link.</p>
+          <div className="d-dialog__acts">
+            <button type="button" className="d-btn" onClick={() => setDialogo(false)}>No, dejarlo como está</button>
+            <button type="button" className="d-btn d-btn--danger" onClick={cancelar}>Sí, cancelar</button>
+          </div>
+        </Dialogo>
+      )}
+      <span className="d-quiet" style={{ fontSize: 12 }}>{siguiente ? 'Un toque avanza al siguiente paso. Se puede deshacer 5 segundos.' : ''}</span>
+    </div>
+  )
+}
+
+/* ----------------------------------------------------------- campo editable */
+
+// El texto no se mueve un píxel al editar: mismo recuadro, Enter o salir guarda, Esc cancela.
+export function CampoEditable({ etiqueta, valor, vacio = 'Sin dato', ayuda, onGuardar, normalizar, validar, tipo = 'text' }) {
+  const [edit, setEdit] = useState(false)
+  const [v, setV] = useState(valor || '')
+  const [err, setErr] = useState(null)
+  const wrap = useRef(null)
+  const input = useRef(null)
+  useEffect(() => { if (!edit) setV(valor || '') }, [valor, edit])
+  useEffect(() => { if (edit) input.current?.select() }, [edit])
+
+  const guardar = () => {
+    const limpio = normalizar ? normalizar(v) : v.trim()
+    const e = validar ? validar(limpio) : null
+    if (e) { setErr(e); return }
+    setErr(null)
+    if (limpio !== (valor || '')) {
+      const r = onGuardar(limpio)
+      if (r && r.error) { setErr(r.error); return }
+      marcar(wrap.current)
+    }
+    setEdit(false)
+  }
+  const teclas = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); guardar() }
+    if (e.key === 'Escape') { setV(valor || ''); setErr(null); setEdit(false) }
+  }
+  return (
+    <div className="d-campo" ref={wrap}>
+      <span className="d-campo__lab">{etiqueta}</span>
+      {edit
+        ? <input ref={input} type={tipo} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={teclas} onBlur={guardar} aria-label={etiqueta} />
+        : (
+          <button type="button" className={'d-campo__val' + (valor ? '' : ' vacio')} onClick={() => setEdit(true)} aria-label={`Editar ${etiqueta}`}>
+            <span>{valor || vacio}</span><span className="lapiz" aria-hidden>✎</span>
+          </button>
+        )}
+      {err && <span className="d-campo__err" role="alert">{err}</span>}
+      {!err && ayuda && edit && <span className="d-campo__ayuda">{ayuda}</span>}
+    </div>
+  )
+}

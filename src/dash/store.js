@@ -9,11 +9,13 @@
 //
 // Hoy vive en localStorage con la misma forma que tendrá en Postgres, para que
 // encender el backend sea cambiar de dónde salen los datos y nada más.
+// El store es observable: cada escritura avisa, y las pantallas se refrescan
+// solas (useStore.js).
 
 import { LOCALES } from '../locales.js'
 import { dayKey } from './format.js'
 
-const LS = 'elhornero.panel.v6'
+const LS = 'elhornero.panel.v7'
 
 const vacio = () => ({
   personas: {}, telefonos: {}, vinculos: [], direcciones: {},
@@ -26,9 +28,19 @@ const cargar = () => {
   try { db = JSON.parse(localStorage.getItem(LS)) || vacio() } catch { db = vacio() }
   return db
 }
-const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(db)) } catch { /* lleno */ } }
+
+// ---------------------------------------------------------------- observable
+let version = 0
+const oyentes = new Set()
+export const getVersion = () => version
+export const suscribir = (fn) => { oyentes.add(fn); return () => oyentes.delete(fn) }
+export const emitir = () => { version++; for (const fn of oyentes) fn(version) }
+export const refrescar = () => emitir()          // el reloj de 30 s llama aquí
+let silencio = false                              // la siembra escribe mil veces: un solo aviso al final
+const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(db)) } catch { /* lleno */ } if (!silencio) emitir() }
 export const reset = () => { db = vacio(); guardar() }
 export const estado = () => cargar()
+export function enBloque(fn) { silencio = true; try { fn() } finally { silencio = false; guardar() } }
 
 // ---------------------------------------------------------------- identidad
 
@@ -71,6 +83,12 @@ export function normalizarTelefono(raw) {
   if (d.startsWith('0')) return '+593' + d.slice(1)
   if (d.length === 9) return '+593' + d
   return '+' + d
+}
+export const telefonoBonito = (e164) => {
+  const d = String(e164 || '').replace(/\D/g, '')
+  if (d.startsWith('593') && d.length === 12) return `0${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8)}`
+  if (d.startsWith('593') && d.length === 11) return `0${d.slice(3, 4)} ${d.slice(4, 7)} ${d.slice(7)}`
+  return e164
 }
 
 const ulid = (p) => p + Math.random().toString(36).slice(2, 10).toUpperCase()
@@ -144,17 +162,36 @@ export function vincularTelefono(persona_id, telefono, confianza = 'inferida') {
   guardar()
 }
 
+// Quitar un teléfono de una persona. Nunca el último: sin teléfono Camila no la reconoce.
+export function quitarTelefono(persona_id, telefono) {
+  const d = cargar()
+  const tel = normalizarTelefono(telefono)
+  const mios = d.vinculos.filter((v) => v.persona === persona_id)
+  if (mios.length <= 1) return { error: 'Sin teléfono, Camila no la reconocerá.' }
+  d.vinculos = d.vinculos.filter((v) => !(v.persona === persona_id && v.telefono === tel))
+  if (d.telefonos[tel]) d.telefonos[tel].compartido = d.vinculos.filter((v) => v.telefono === tel).length > 1
+  guardar()
+  return { ok: true }
+}
+
+// ¿De quién más es este número? (para avisar antes de compartirlo)
+export function duenosDe(telefono, salvo) {
+  const d = cargar()
+  const tel = normalizarTelefono(telefono)
+  return d.vinculos.filter((v) => v.telefono === tel && v.persona !== salvo).map((v) => d.personas[v.persona]).filter(Boolean)
+}
+
 export function agregarDireccion(persona_id, dir) {
   const d = cargar()
   const id = ulid('dir_')
   const hash = norm(`${dir.calle}|${dir.sector}|${dir.ciudad || 'Quito'}`).replace(/\s+/g, ' ')
-  const existente = Object.values(d.direcciones).find((x) => x.persona_id === persona_id && x.hash_norm === hash)
+  const existente = Object.values(d.direcciones).find((x) => x.persona_id === persona_id && x.hash_norm === hash && x.estado === 'activa')
   if (existente) { existente.veces_usada++; existente.ultima_vez_en = Date.now(); guardar(); return existente }
   const primera = !Object.values(d.direcciones).some((x) => x.persona_id === persona_id && x.estado === 'activa')
   const row = {
     direccion_id: id, persona_id,
     alias: dir.alias || (primera ? 'Casa' : 'Otra'),
-    calle: dir.calle || '', referencia: dir.referencia || '',
+    calle: dir.calle || '', numero: dir.numero || '', referencia: dir.referencia || '',
     sector: dir.sector || '', ciudad: dir.ciudad || 'Quito',
     lat: dir.lat ?? null, lng: dir.lng ?? null,
     local_id: dir.local_id || null,
@@ -166,7 +203,58 @@ export function agregarDireccion(persona_id, dir) {
   return row
 }
 
+// Editar crea una fila nueva y apaga la vieja: los pedidos pasados no se reescriben.
+export function editarDireccion(direccion_id, cambios) {
+  const d = cargar()
+  const vieja = d.direcciones[direccion_id]
+  if (!vieja) return null
+  const cambiaSitio = (cambios.calle != null && cambios.calle !== vieja.calle) || (cambios.sector != null && cambios.sector !== vieja.sector)
+  vieja.estado = 'inactiva'
+  const nueva = {
+    ...vieja, ...cambios, direccion_id: ulid('dir_'), estado: 'activa', creada_en: Date.now(),
+    lat: cambiaSitio ? null : vieja.lat, lng: cambiaSitio ? null : vieja.lng,
+    hash_norm: norm(`${cambios.calle ?? vieja.calle}|${cambios.sector ?? vieja.sector}|${vieja.ciudad}`).replace(/\s+/g, ' '),
+  }
+  d.direcciones[nueva.direccion_id] = nueva
+  // Los pedidos en curso siguen a la dirección nueva; los entregados no.
+  for (const p of Object.values(d.pedidos)) if (p.direccion_id === direccion_id && !['entregado', 'cancelado'].includes(p.estado)) p.direccion_id = nueva.direccion_id
+  guardar()
+  return nueva
+}
+
+export function marcarDireccionPrincipal(persona_id, direccion_id) {
+  const d = cargar()
+  for (const x of Object.values(d.direcciones)) if (x.persona_id === persona_id) x.es_default = x.direccion_id === direccion_id
+  guardar()
+}
+
+// Los datos de la persona. La cédula se valida y no puede ser de otra persona activa.
+export function actualizarPersona(persona_id, campos) {
+  const d = cargar()
+  const p = d.personas[persona_id]
+  if (!p) return { error: 'Ficha inexistente.' }
+  if ('cedula' in campos) {
+    const c = String(campos.cedula || '').replace(/\D/g, '')
+    if (c && !validarCedula(c)) return { error: 'Esa cédula no cuadra. Son 10 números; revise el último.' }
+    const otra = c && Object.values(d.personas).find((x) => x.cedula === c && x.estado === 'activa' && x.persona_id !== persona_id)
+    if (otra) return { error: `Esa cédula ya es de ${otra.nombre} ${otra.apellido}. Si es la misma persona, hay que unir las fichas.`, otra }
+    p.cedula = c || null
+    p.cedula_estado = c ? 'valida' : 'sin_dato'
+  }
+  for (const k of ['nombre', 'apellido', 'correo']) if (k in campos) p[k] = campos[k]
+  guardar()
+  return { ok: true }
+}
+
 // ---------------------------------------------------------------- pedidos
+
+export const PASOS_DOMICILIO = ['pendiente_pago', 'recibido', 'horno', 'camino', 'entregado']
+export const PASOS_RETIRO = ['pendiente_pago', 'recibido', 'horno', 'camino', 'entregado']   // 'camino' = listo para retirar
+export const pasosDe = (p) => {
+  const base = p.modalidad === 'retiro' ? PASOS_RETIRO : PASOS_DOMICILIO
+  // Un pedido que nació pagado o en efectivo no pasó por "listo para pagar".
+  return p.historial && p.historial.pendiente_pago ? base : base.slice(1)
+}
 
 // Las líneas guardan el precio y la categoría COBRADOS, no los de hoy: cuando
 // suban los precios en enero, diciembre no se puede recalcular solo.
@@ -174,6 +262,10 @@ export function registrarPedido(p) {
   const d = cargar()
   const id = p.pedido_id || ulid('EH')
   const creado = p.creado_en || Date.now()
+  const est = p.estado || 'entregado'
+  const historial = p.historial || {}
+  if (!historial[est]) historial[est] = est === 'entregado' && p.minutos_entrega ? creado + p.minutos_entrega * 60000 : creado
+  if (est !== 'recibido' && !historial.recibido) historial.recibido = creado
   d.pedidos[id] = {
     pedido_id: id,
     persona_id: p.persona_id,
@@ -181,7 +273,7 @@ export function registrarPedido(p) {
     direccion_id: p.direccion_id || null,
     modalidad: p.modalidad || 'domicilio',
     canal: p.canal || 'llamada',
-    estado: p.estado || 'entregado',
+    estado: est,
     subtotal: p.subtotal || 0,
     envio_cobrado: p.envio_cobrado || 0,
     total_cobrado: p.total_cobrado || 0,
@@ -192,7 +284,9 @@ export function registrarPedido(p) {
     conversacion_id: p.conversacion_id || null,
     repartidor: p.repartidor || null,
     salio_en: p.salio_en || null,              // cuando la moto salio del local
-    rider: p.rider || null,                    // {lat,lng,at} ultima posicion conocida
+    rider: p.rider || null,                    // {lat,lng,at,demo} ultima posicion conocida
+    historial,                                 // estado → cuándo entró en él
+    motivo_cancelacion: null,
   }
   for (const it of p.items || []) {
     d.items.push({
@@ -203,6 +297,42 @@ export function registrarPedido(p) {
   }
   guardar()
   return d.pedidos[id]
+}
+
+// Cambiar de estado: solo al paso siguiente, salvo `forzar` (Deshacer).
+export function cambiarEstado(pedido_id, estado, { forzar = false } = {}) {
+  const d = cargar()
+  const p = d.pedidos[pedido_id]
+  if (!p || p.estado === 'cancelado') return false
+  const pasos = pasosDe(p)
+  const i = pasos.indexOf(p.estado), j = pasos.indexOf(estado)
+  if (j < 0) return false
+  if (!forzar && j !== i + 1 && j !== i - 1) return false
+  p.estado = estado
+  p.historial = { ...(p.historial || {}), [estado]: Date.now() }
+  if (estado === 'camino' && p.modalidad === 'domicilio') {
+    p.salio_en = p.salio_en || Date.now()
+    if (!p.repartidor) p.repartidor = 'Motorizado'
+    if (!p.rider) {
+      const sede = localPorId(p.local_id)
+      if (sede?.lat != null) p.rider = { lat: sede.lat, lng: sede.lng, at: Date.now(), demo: true }
+    }
+  }
+  if (estado === 'entregado') p.minutos_entrega = p.minutos_entrega ?? Math.max(1, Math.round((Date.now() - p.creado_en) / 60000))
+  if (j < i) { if (estado !== 'entregado') p.minutos_entrega = null; if (j < pasos.indexOf('camino')) { p.salio_en = null; p.rider = null } }
+  guardar()
+  return true
+}
+
+export function cancelarPedido(pedido_id, motivo) {
+  const d = cargar()
+  const p = d.pedidos[pedido_id]
+  if (!p) return false
+  p.estado = 'cancelado'
+  p.motivo_cancelacion = motivo || null
+  p.historial = { ...(p.historial || {}), cancelado: Date.now() }
+  guardar()
+  return true
 }
 
 export function registrarConversacion(c) {
@@ -230,31 +360,53 @@ export function registrarConversacion(c) {
 
 export const locales = () => LOCALES
 export const localPorId = (id) => LOCALES.find((l) => l.id === id) || null
+export const nombreLocal = (id) => localPorId(id)?.nombre || id || ''
+
+// Los locales que ya mandan pedidos al tablero (alguno en los últimos 14 días).
+export function localesConectados() {
+  const d = cargar()
+  const desde = dayKey(new Date(Date.now() - 13 * 86400000))
+  const ids = new Set(Object.values(d.pedidos).filter((p) => p.dia >= desde).map((p) => p.local_id))
+  return LOCALES.filter((l) => ids.has(l.id))
+}
 
 const enRango = (dia, desde, hasta) => dia >= desde && dia <= hasta
+const minutoDe = (ts) => { const t = new Date(ts); return t.getHours() * 60 + t.getMinutes() }
+export const EN_CURSO = ['pendiente_pago', 'recibido', 'horno', 'camino']
 
-export function pedidos({ desde, hasta, local } = {}) {
+export function pedidos({ desde, hasta, local, estado, modalidad, canal, pago, hastaMin, cancelados = false } = {}) {
   const d = cargar()
   return Object.values(d.pedidos)
     .filter((p) => (!desde || enRango(p.dia, desde, hasta || desde)))
     .filter((p) => (!local || p.local_id === local))
-    .filter((p) => p.estado !== 'cancelado')
+    .filter((p) => (cancelados || estado === 'cancelado' ? true : p.estado !== 'cancelado'))
+    .filter((p) => !estado || (estado === 'en_curso' ? EN_CURSO.includes(p.estado) : p.estado === estado))
+    .filter((p) => !modalidad || p.modalidad === modalidad)
+    .filter((p) => !canal || p.canal === canal)
+    .filter((p) => !pago || p.forma_pago === pago)
+    .filter((p) => hastaMin == null || minutoDe(p.creado_en) <= hastaMin)
     .sort((a, b) => b.creado_en - a.creado_en)
 }
 
-export function conversaciones({ desde, hasta, local } = {}) {
+export function conversaciones({ desde, hasta, local, resultado, motivo, cedula } = {}) {
   const d = cargar()
   return Object.values(d.conversaciones)
     .filter((c) => (!desde || enRango(c.dia, desde, hasta || desde)))
     .filter((c) => (!local || c.local_id === local))
+    .filter((c) => !resultado || c.resultado === resultado)
+    .filter((c) => !motivo || c.motivo_no_cierre === motivo)
+    .filter((c) => !cedula || c.cedula_capturada)
     .sort((a, b) => b.inicio - a.inicio)
 }
 
-export function itemsDe({ desde, hasta, local } = {}) {
+// Ítems de pedidos NO cancelados.
+export function itemsDe({ desde, hasta, local, categoria } = {}) {
   const d = cargar()
   return d.items
     .filter((i) => (!desde || enRango(i.dia, desde, hasta || desde)))
     .filter((i) => (!local || i.local_id === local))
+    .filter((i) => !categoria || i.categoria === categoria)
+    .filter((i) => d.pedidos[i.pedido_id]?.estado !== 'cancelado')
 }
 
 export function ventaPorLocal(rango) {
@@ -281,6 +433,17 @@ export function ventaPorCategoria(rango) {
   return [...map.values()].sort((a, b) => b.total - a.total)
 }
 
+export function ventaPorPago(rango) {
+  const ps = pedidos(rango)
+  const map = new Map()
+  for (const p of ps) {
+    const e = map.get(p.forma_pago) || { pago: p.forma_pago, total: 0, pedidos: 0 }
+    e.total += p.total_cobrado; e.pedidos++
+    map.set(p.forma_pago, e)
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total)
+}
+
 export function topProductos(rango, n = 10) {
   const its = itemsDe(rango)
   const map = new Map()
@@ -298,14 +461,40 @@ export function resumen(rango) {
   const cs = conversaciones(rango)
   const total = ps.reduce((t, p) => t + p.total_cobrado, 0)
   const cerradas = cs.filter((c) => c.resultado === 'pedido').length
+  const enCurso = ps.filter((p) => EN_CURSO.includes(p.estado))
+  const entregadas = ps.filter((p) => p.estado === 'entregado' && p.modalidad === 'domicilio' && p.minutos_entrega != null)
+  const aTiempo = entregadas.filter((p) => p.minutos_entrega <= 35).length
+  const envio = ps.reduce((t, p) => t + (p.envio_cobrado || 0), 0)
+  const porEstado = {}
+  for (const p of enCurso) porEstado[p.estado] = (porEstado[p.estado] || 0) + 1
   return {
-    total,
+    total, envio,
     pedidos: ps.length,
     ticket: ps.length ? total / ps.length : 0,
     conversaciones: cs.length,
     cerradas,
-    pendientes: ps.filter((p) => ['pendiente_pago', 'recibido', 'horno', 'camino'].includes(p.estado)).length,
+    pendientes: enCurso.length,
+    porEstado,
     domicilio: ps.filter((p) => p.modalidad === 'domicilio').length,
+    retiro: ps.filter((p) => p.modalidad === 'retiro').length,
+    entregadas: entregadas.length, aTiempo,
+    ultimo: ps[0] || null,
+  }
+}
+
+// Las llamadas: cuántas entraron, cuántas contestó Camila, cuántas pidieron.
+export function embudoLlamadas(rango) {
+  const cs = conversaciones(rango)
+  const contestadas = cs.filter((c) => c.resultado !== 'no_contestada').length
+  const pedidos_ = cs.filter((c) => c.resultado === 'pedido').length
+  const colgo = cs.filter((c) => c.resultado === 'colgo').length
+  const sinPedido = cs.filter((c) => c.resultado === 'sin_pedido').length
+  const motivos = new Map()
+  for (const c of cs) if (c.motivo_no_cierre) motivos.set(c.motivo_no_cierre, (motivos.get(c.motivo_no_cierre) || 0) + 1)
+  return {
+    total: cs.length, contestadas, pedidos: pedidos_, colgo, sinPedido,
+    conCedula: cs.filter((c) => c.cedula_capturada).length,
+    motivos: [...motivos.entries()].map(([motivo, n]) => ({ motivo, n })).sort((a, b) => b.n - a.n),
   }
 }
 
@@ -320,7 +509,7 @@ export function personaPorId(id) {
     .sort((a, b) => Number(b.es_default) - Number(a.es_default))
   const peds = Object.values(d.pedidos).filter((x) => x.persona_id === id)
     .sort((a, b) => b.creado_en - a.creado_en)
-  const gastado = peds.reduce((t, x) => t + x.total_cobrado, 0)
+  const gastado = peds.filter((x) => x.estado !== 'cancelado').reduce((t, x) => t + x.total_cobrado, 0)
   return {
     ...p, telefonos: tels, direcciones: dirs, pedidos: peds,
     gastado, ticket: peds.length ? gastado / peds.length : 0,
@@ -356,7 +545,8 @@ export function fichaParaAgente(telefono) {
   }
 }
 
-// Los pedidos que están en la calle ahora mismo, con su moto.
+// Los pedidos que están en la calle ahora mismo, con su moto. En la demo la
+// moto avanza sola por la recta local → casa según el tiempo que lleva fuera.
 export function enRuta() {
   const d = cargar()
   return Object.values(d.pedidos)
@@ -366,8 +556,16 @@ export function enRuta() {
     .map((p) => {
       const dir = p.direccion_id ? d.direcciones[p.direccion_id] : null
       const min = p.salio_en ? Math.round((Date.now() - p.salio_en) / 60000) : null
+      let rider = p.rider
+      if (rider?.demo && dir?.lat != null) {
+        const sede = localPorId(p.local_id)
+        if (sede?.lat != null) {
+          const f = Math.min(0.92, Math.max(0.08, (min || 0) / 30))
+          rider = { lat: sede.lat + (dir.lat - sede.lat) * f, lng: sede.lng + (dir.lng - sede.lng) * f, at: Date.now(), demo: true }
+        }
+      }
       return {
-        ...p,
+        ...p, rider,
         destino: dir ? { lat: dir.lat, lng: dir.lng, sector: dir.sector, calle: dir.calle } : null,
         minutos_fuera: min,
         // 35 minutos es el umbral en que un pedido deja de ser normal y pasa a
@@ -379,7 +577,31 @@ export function enRuta() {
     .sort((a, b) => (b.minutos_fuera || 0) - (a.minutos_fuera || 0))
 }
 
+// Entregas de HOY ya terminadas, para dibujar la huella del día.
+export function huellaDeHoy(local) {
+  const d = cargar()
+  const hoy = dayKey(new Date())
+  return Object.values(d.pedidos)
+    .filter((p) => p.dia === hoy && p.estado === 'entregado' && p.modalidad === 'domicilio' && (!local || p.local_id === local))
+    .map((p) => { const dir = p.direccion_id ? d.direcciones[p.direccion_id] : null; return dir ? { pedido_id: p.pedido_id, lat: dir.lat, lng: dir.lng, hora: p.historial?.entregado || p.creado_en, minutos: p.minutos_entrega } : null })
+    .filter((x) => x && x.lat != null)
+}
+
 // ---------------------------------------------------------------- resumen
+
+// El corte del día: la hora actual, o la del último pedido de hoy si ya es más
+// tarde que el reloj (pasa con los datos de demostración).
+export function corteDeHoy(local) {
+  const d = cargar()
+  const ahora = new Date()
+  const hoyK = dayKey(ahora)
+  let corte = ahora.getHours() * 60 + ahora.getMinutes()
+  for (const p of Object.values(d.pedidos)) {
+    if (p.dia !== hoyK || (local && p.local_id !== local)) continue
+    corte = Math.max(corte, minutoDe(p.creado_en))
+  }
+  return corte
+}
 
 // La serie de los últimos N días, para el gráfico de columnas.
 export function serieDiaria(n = 14, local) {
@@ -426,7 +648,7 @@ export function semanaContraSemana(local) {
   const cnt = (o) => comunes.reduce((t, id) => t + o[id].n, 0)
   const n1 = cnt(A), n0 = cnt(B)
   return {
-    comunes: comunes.length,
+    comunes: comunes.length, locales: Object.keys(A).length,
     n1, n0,
     v1: sum(A), v0: sum(B),
     t1: n1 ? sum(A) / n1 : 0,
@@ -441,25 +663,28 @@ export function hoyContraLaSemanaPasada(local) {
   const hoyK = dayKey(ahora)
   const baseK = dayKey(new Date(ahora.getTime() - 7 * 86400000))
   const d = cargar()
-  // El corte es la hora actual, o la del último pedido de hoy si ya es más
-  // tarde que el reloj (pasa con los datos de demostración). Comparar contra
-  // el día completo de la semana pasada siempre diría "vamos mal".
-  let corte = ahora.getHours() * 60 + ahora.getMinutes()
-  for (const p of Object.values(d.pedidos)) {
-    if (p.dia !== hoyK) continue
-    const t = new Date(p.creado_en)
-    corte = Math.max(corte, t.getHours() * 60 + t.getMinutes())
-  }
-  let hoy = 0, base = 0
+  const corte = corteDeHoy(local)
+  let hoy = 0, base = 0, hoyN = 0, baseN = 0
   for (const p of Object.values(d.pedidos)) {
     if (p.estado === 'cancelado') continue
     if (local && p.local_id !== local) continue
-    const t = new Date(p.creado_en)
-    const min = t.getHours() * 60 + t.getMinutes()
-    if (p.dia === hoyK) hoy += p.total_cobrado
-    else if (p.dia === baseK && min <= corte) base += p.total_cobrado
+    const min = minutoDe(p.creado_en)
+    if (p.dia === hoyK) { hoy += p.total_cobrado; hoyN++ }
+    else if (p.dia === baseK && min <= corte) { base += p.total_cobrado; baseN++ }
   }
-  return { hoy, base }
+  return { hoy, base, hoyN, baseN, corte, baseK }
+}
+
+// El acumulado de un día, cada `paso` minutos, desde las 11:00 hasta el corte.
+export function acumuladoDelDia(dia, local, corteMin, paso = 30) {
+  const d = cargar()
+  const ps = Object.values(d.pedidos).filter((p) => p.dia === dia && p.estado !== 'cancelado' && (!local || p.local_id === local))
+  const puntos = []
+  for (let m = 660; m <= Math.max(660, corteMin); m += paso) {
+    puntos.push({ x: Math.min(m, corteMin), y: ps.filter((p) => minutoDe(p.creado_en) <= m).reduce((t, p) => t + p.total_cobrado, 0) })
+    if (m + paso > corteMin && m < corteMin) { puntos.push({ x: corteMin, y: ps.filter((p) => minutoDe(p.creado_en) <= corteMin).reduce((t, p) => t + p.total_cobrado, 0) }); break }
+  }
+  return { puntos, n: ps.length }
 }
 
 // Dónde se vende más de qué: cada local contra los OTROS, no contra un promedio
@@ -491,7 +716,7 @@ export function dondeSeVendeMas(rango, { minUnidades = 12, minVeces = 1.4 } = {}
       const veces = aqui / ref
       if (veces < minVeces) continue
       filas.push({
-        local: localPorId(id)?.nombre || id, categoria: cat, aqui, otros: ref,
+        local: localPorId(id)?.nombre || id, local_id: id, categoria: cat, aqui, otros: ref,
         veces: veces >= 2 ? 'el doble de' : 'bastante más',
         orden: veces,
       })

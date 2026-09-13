@@ -350,7 +350,7 @@ function CheckoutRoute() {
 
 export default function App() {
   const { page, id, d } = useRoute()
-  if (page === 'panel') return <Suspense fallback={null}><Panel /></Suspense>
+  if (page === 'panel') return <Suspense fallback={<div className="dash" style={{ minHeight: '100dvh', background: '#0B0F0C' }} />}><Panel /></Suspense>
   if (page === 'checkout') return <CheckoutRoute />
   if (page === 'pedido' && id) return <Order id={id} packed={d} />
   if (page === 'pago' && id) return <Pay id={id} packed={d} />
