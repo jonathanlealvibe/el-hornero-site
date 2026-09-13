@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { CATS, MENU, FREE_DELIVERY_OVER, DELIVERY_FEE, IVA } from './data.js'
 import InstallButton from './InstallButton.jsx'
 import { useRoute, go } from './router.js'
+import { lazy, Suspense } from 'react'
+const Panel = lazy(() => import('./dash/Panel.jsx'))
 import Checkout from './pages/Checkout.jsx'
 import Order from './pages/Order.jsx'
 import Driver from './pages/Driver.jsx'
@@ -348,6 +350,7 @@ function CheckoutRoute() {
 
 export default function App() {
   const { page, id, d } = useRoute()
+  if (page === 'panel') return <Suspense fallback={null}><Panel /></Suspense>
   if (page === 'checkout') return <CheckoutRoute />
   if (page === 'pedido' && id) return <Order id={id} packed={d} />
   if (page === 'pago' && id) return <Pay id={id} packed={d} />

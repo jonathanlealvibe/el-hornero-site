@@ -1,0 +1,444 @@
+/* ============================================================
+   src/dash/dash.css — IMPORTAR DESPUÉS de src/styles.css
+   Todo vive bajo .dash y toda clase lleva prefijo d-, porque la
+   tienda ya usa .card .row .chip .tag .price .empty .summary
+   .hint .muted .small .wide .track — sin prefijo, el tablero
+   hereda estilos de la tienda y se rompe. Es el fallo más
+   probable del proyecto.
+   ============================================================ */
+
+.dash{
+  /* lienzo */
+  --d-canvas:#F3F4F1; --d-surface:#FFFFFF; --d-surface-2:#FAFAF8; --d-surface-3:#EFF1EC;
+  --d-line:#E3E5DF;        /* borde de tarjeta (decorativo) */
+  --d-line-soft:#EDEFE9;   /* línea entre filas */
+  --d-line-ctl:#767676;    /* borde de TODO control: 4.54:1, el mínimo 3:1 lo exige */
+  /* tinta — contrastes medidos sobre blanco */
+  --d-ink:#1D1D1B;         /* 16.88:1 · todas las cifras */
+  --d-ink-2:#45463F;       /* celdas de tabla */
+  --d-muted:#5C5C5C;       /* 6.69:1 · texto de apoyo, incl. <14px */
+  /* marca, con cuentagotas */
+  --d-green:#0E5A33;       /* 8.30:1 · el verde de TEXTO */
+  --d-green-dark:#0A4526;  /* 11.10:1 · el riel */
+  --d-green-acc:#0E7C41;   /* 5.28:1 · relleno de barras y botones, NUNCA texto chico */
+  --d-green-wash:#EAF4EE;
+  --d-green-soft:#C9DED2;
+  --d-yellow:#F5C518;      /* 1.63:1 sobre blanco: NUNCA texto, línea ni barra */
+  --d-amber-wash:#FFF4CF; --d-amber-ink:#7A5A00;   /* "está pendiente" */
+  --d-up:#0E7C41; --d-down:#B4472F;                /* ladrillo, no rojo de semáforo */
+  --d-broken:#9C1C1C; --d-broken-wash:#FCE4E4;     /* sólo para algo ROTO */
+  /* espacio, base 4 */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px;
+  --s-8:32px; --s-10:40px; --s-12:48px;
+  /* radios */
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:14px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(20,22,18,.05);     /* tarjetas */
+  --sh-2:0 8px 24px rgba(20,22,18,.14);    /* sólo menús y hojas flotantes */
+  /* tipografía — Poppins ya se carga en index.html, pesos 300–800 */
+  --ff:Poppins, Helvetica, Arial, sans-serif;
+  --fs-hero:34px; --fs-stat:28px; --fs-h1:22px; --fs-lede:20px; --fs-h2:15px;
+  --fs-body:14px; --fs-cell:14px; --fs-sm:13px; --fs-xs:12.5px; --fs-eyebrow:11px;
+  /* medidas fijas */
+  --d-row-h:44px; --d-rail-h:56px; --d-bar-h:48px; --d-tab-h:56px; --d-wrap:1240px;
+
+  min-height:100vh; background:var(--d-canvas); color:var(--d-ink);
+  font-family:var(--ff); font-size:var(--fs-body);
+  font-variant-numeric:tabular-nums; font-feature-settings:'tnum';
+  -webkit-font-smoothing:antialiased;
+}
+.dash *, .dash *::before, .dash *::after{ box-sizing:border-box; }
+.dash a{ color:inherit; text-decoration:none; }
+.dash h1,.dash h2,.dash h3,.dash p{ margin:0; }
+
+/* La tienda pone un foco amarillo global (styles.css:351) que sobre
+   blanco da 1.63:1, o sea invisible. Anillo de dos tonos: el amarillo
+   es la marca, el aro de tinta es el que cumple. */
+.dash :focus-visible{
+  outline:0; box-shadow:0 0 0 2px var(--d-yellow), 0 0 0 4px var(--d-ink);
+  border-radius:var(--r-xs);
+}
+.d-skip{ position:absolute; left:-9999px; }
+.d-skip:focus{ left:var(--s-4); top:var(--s-2); z-index:80; background:#fff;
+  padding:10px 14px; border-radius:var(--r-sm); font-weight:600; }
+.d-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---------- 1. ESQUELETO ---------------------------------- */
+.d-main{ padding:var(--s-5) var(--s-6) var(--s-12); }
+.d-wrap{ max-width:var(--d-wrap); margin:0 auto; display:grid; gap:var(--s-5); }
+.d-grid{ display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:var(--s-4); }
+.d-c4{grid-column:span 4} .d-c5{grid-column:span 5} .d-c6{grid-column:span 6}
+.d-c7{grid-column:span 7} .d-c8{grid-column:span 8} .d-c12{grid-column:span 12}
+@media (max-width:1000px){ .d-grid>*{ grid-column:span 12 } }
+@media (max-width:899px){ .d-main{ padding:var(--s-4) 14px 96px } }
+/* El tope de 1240px importa: con 29 locales y 11 pedidos, una tabla
+   estirada a 1920px pone el nombre y su plata a medio metro. */
+
+/* ---------- 2. NAVEGACIÓN (riel arriba / pestañas abajo) --- */
+.d-rail{ position:sticky; top:0; z-index:40; height:var(--d-rail-h);
+  display:flex; align-items:center; gap:var(--s-5);
+  padding:0 var(--s-6); background:var(--d-green-dark); color:#fff; }
+.d-rail__mark{ font-style:italic; font-weight:600; font-size:19px; letter-spacing:-.02em; }
+.d-rail__mark span{ font-style:normal; font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--d-yellow); margin-left:8px; }
+.d-rail nav{ display:flex; gap:var(--s-5); height:100%; }
+.d-rail nav a{ display:flex; align-items:center; font-size:15px; font-weight:600;
+  color:rgba(255,255,255,.82); border-bottom:3px solid transparent; }
+.d-rail nav a:hover{ color:#fff; }
+.d-rail nav a[aria-current="page"]{ color:#fff; border-bottom-color:var(--d-yellow); }
+.d-rail__user{ margin-left:auto; display:flex; align-items:center; gap:var(--s-2); font-size:13.5px; }
+
+.d-tabbar{ display:none; }
+@media (max-width:899px){
+  .d-rail nav{ display:none; }
+  .d-rail{ height:52px; }
+  .d-tabbar{ /* ÚLTIMA en el HTML, siempre */
+    position:fixed; inset:auto 0 0 0; z-index:50; display:grid;
+    grid-template-columns:repeat(5,1fr); background:#fff;
+    border-top:1px solid var(--d-line); padding-bottom:env(safe-area-inset-bottom); }
+  .d-tabbar a{ display:grid; justify-items:center; gap:3px; padding:9px 0 8px;
+    min-height:var(--d-tab-h); font-size:11px; font-weight:600; color:var(--d-muted); }
+  .d-tabbar a[aria-current="page"]{ color:var(--d-green); }
+  .d-tabbar svg{ width:22px; height:22px; }
+}
+
+/* ---------- 3. BARRA DE FILTROS GLOBALES ------------------- */
+.d-filterbar{ position:sticky; top:var(--d-rail-h); z-index:30; height:var(--d-bar-h);
+  display:flex; align-items:center; gap:var(--s-3);
+  padding:0 var(--s-6); background:#fff; border-bottom:1px solid var(--d-line); }
+.d-filterbar h1{ font-size:var(--fs-h1); font-weight:600; letter-spacing:-.02em; }
+.d-filterbar__right{ margin-left:auto; display:flex; align-items:center; gap:var(--s-2); }
+.d-back{ display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600;
+  color:var(--d-green); min-height:44px; }
+
+.d-seg{ display:inline-flex; background:#fff; border:1px solid var(--d-line-ctl);
+  border-radius:var(--r-pill); padding:3px; }
+.d-seg button{ border:0; background:transparent; border-radius:var(--r-pill);
+  min-height:34px; padding:0 14px; font:600 13px/1 var(--ff); color:var(--d-muted); cursor:pointer; }
+.d-seg button[aria-pressed="true"]{ background:var(--d-green); color:#fff; }
+
+.d-select,.d-input{ height:36px; padding:0 var(--s-3); border:1px solid var(--d-line-ctl);
+  border-radius:var(--r-sm); background:#fff; font:400 13.5px/1 var(--ff); color:var(--d-ink); }
+.d-input{ min-width:220px; }
+.d-select--dot::before{ content:""; display:inline-block; width:8px; height:8px;
+  border-radius:50%; background:var(--d-green-acc); margin-right:8px; }
+
+.d-histstrip{ display:flex; align-items:center; gap:var(--s-3); min-height:28px;
+  padding:5px var(--s-6); background:var(--d-amber-wash); color:var(--d-amber-ink);
+  border-top:3px solid var(--d-yellow); font-size:var(--fs-sm); font-weight:600; }
+
+/* Filtros LOCALES de cada pantalla: nunca pegajosos, nunca en el chrome */
+.d-toolbar{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-2);
+  padding:var(--s-3) 0; }
+.d-chip{ display:inline-flex; align-items:center; min-height:44px; padding:0 14px;
+  border:1px solid var(--d-line-ctl); border-radius:var(--r-pill); background:#fff;
+  font-size:13px; font-weight:600; color:var(--d-ink-2); cursor:pointer; }
+.d-chip[aria-pressed="true"]{ border-color:var(--d-green); background:var(--d-green-wash); color:var(--d-green); }
+.d-chipf{ display:inline-flex; align-items:center; gap:7px; height:32px; padding:0 6px 0 12px;
+  border-radius:var(--r-pill); border:1px solid var(--d-green); background:var(--d-green-wash);
+  color:var(--d-green); font-size:12.5px; font-weight:600; }
+.d-chipf button{ border:0; background:transparent; color:inherit; cursor:pointer;
+  width:24px; height:24px; border-radius:50%; }
+
+/* Filtro de teléfono: una sola píldora al alcance del pulgar */
+.d-filterpill{ display:none; }
+@media (max-width:899px){
+  .d-filterbar{ display:none; }
+  .d-filterpill{ position:fixed; left:50%; transform:translateX(-50%); z-index:51;
+    bottom:calc(var(--d-tab-h) + env(safe-area-inset-bottom) + 10px);
+    display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 18px;
+    border:0; border-radius:var(--r-pill); background:var(--d-ink); color:#fff;
+    font:600 13.5px/1 var(--ff); box-shadow:0 8px 26px rgba(0,0,0,.28); }
+  .d-sheet{ position:fixed; inset:auto 0 0 0; z-index:60; background:#fff;
+    border-radius:20px 20px 0 0; max-height:78vh; overflow:auto; box-shadow:var(--sh-2);
+    padding:var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); }
+  .d-sheet__grip{ width:36px; height:4px; border-radius:2px; background:#D9D9D9; margin:0 auto var(--s-4); }
+  .d-sheet__label{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--d-muted); margin:var(--s-4) 0 var(--s-2); }
+  .d-sheet__opt{ display:flex; align-items:center; justify-content:space-between;
+    min-height:52px; border-bottom:1px solid var(--d-line-soft); font-size:15px; }
+}
+
+/* ---------- 4. TITULAR Y PENDIENTES ------------------------ */
+.d-lede{ display:grid; gap:6px; padding:var(--s-1) 0 var(--s-2); }
+.d-eyebrow{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--d-muted); }
+.d-lede__text{ font-size:var(--fs-lede); font-weight:500; line-height:1.45;
+  color:var(--d-ink); max-width:62ch; text-wrap:pretty; }
+.d-lede__cmp{ font-size:var(--fs-xs); color:var(--d-muted); }
+.d-lede__cmp .up{ color:var(--d-up); font-weight:600; }
+.d-lede__cmp .down{ color:var(--d-down); font-weight:600; }
+@media (max-width:899px){ .dash{ --fs-lede:18px } }
+
+.d-pending{ display:grid; grid-template-columns:repeat(3,1fr); gap:var(--s-3); }
+.d-pending a{ display:grid; gap:2px; padding:14px 16px; border-radius:var(--r-md);
+  background:var(--d-amber-wash); color:var(--d-amber-ink);
+  border:1px solid rgba(122,90,0,.18); font-size:var(--fs-sm); }
+.d-pending strong{ font-size:15px; font-weight:700; }
+.d-pending--clear{ display:flex; align-items:center; gap:8px; grid-template-columns:none;
+  font-size:15px; color:var(--d-ink); }
+@media (max-width:719px){ .d-pending{ grid-template-columns:1fr } }
+
+/* ---------- 5. TARJETA ------------------------------------- */
+.d-card{ background:var(--d-surface); border:1px solid var(--d-line);
+  border-radius:var(--r-md); box-shadow:var(--sh-1); overflow:hidden;
+  display:grid; grid-template-rows:auto 1fr auto; }
+.d-card__head{ display:flex; align-items:center; gap:var(--s-3);
+  padding:var(--s-4) var(--s-4) var(--s-3); border-bottom:1px solid var(--d-line-soft); }
+.d-card__title{ font-size:var(--fs-h2); font-weight:600; letter-spacing:-.01em; }
+.d-card__sub{ font-size:var(--fs-xs); color:var(--d-muted); margin-top:2px; }
+.d-card__tools{ margin-left:auto; display:flex; align-items:center; gap:var(--s-2); }
+.d-card__body{ padding:var(--s-4); }
+.d-card__body--flush{ padding:0; }
+.d-card__foot{ display:flex; align-items:center; justify-content:space-between;
+  padding:var(--s-3) var(--s-4); border-top:1px solid var(--d-line-soft);
+  background:var(--d-surface-2); font-size:var(--fs-sm); color:var(--d-muted); }
+.d-card--tall{ min-height:340px; }   /* que 3 filas no hagan colapsar la tarjeta */
+@media (max-width:899px){ .d-card--tall{ min-height:0 } .d-card__body{ padding:var(--s-3) } }
+
+/* ---------- 6. CIFRAS -------------------------------------- */
+.d-stats{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--s-4); }
+.d-stat{ display:grid; gap:var(--s-2); align-content:start; min-height:118px; width:100%;
+  padding:var(--s-4) var(--s-4) var(--s-3); text-align:left; cursor:pointer;
+  background:var(--d-surface); border:1px solid var(--d-line); border-radius:var(--r-md);
+  box-shadow:var(--sh-1); font-family:var(--ff); color:inherit; }
+.d-stat:hover{ border-color:var(--d-green); transform:translateY(-1px); }
+.d-stat__label{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--d-muted); }      /* etiqueta PRIMERO en el HTML */
+.d-stat__value{ font-size:var(--fs-stat); font-weight:700; letter-spacing:-.02em;
+  line-height:1.1; color:var(--d-ink); min-width:7ch; }  /* ancho reservado: no salta al refrescar */
+.d-stat__foot{ font-size:var(--fs-xs); color:var(--d-muted); line-height:1.45; }
+.d-stat--hero .d-stat__value{ font-size:var(--fs-hero); }
+@media (max-width:1024px){ .d-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+@media (max-width:560px){
+  .d-stat--hero{ grid-column:1/-1 }
+  .d-stat{ min-height:96px; padding:var(--s-3) }
+  .dash{ --fs-stat:24px; --fs-hero:clamp(34px,12vw,44px) }
+}
+.d-delta{ display:inline-flex; align-items:center; gap:4px; padding:2px 8px;
+  border-radius:var(--r-pill); font-size:var(--fs-xs); font-weight:600; }
+.d-delta--up{ color:var(--d-up); background:var(--d-green-wash) }
+.d-delta--down{ color:var(--d-down); background:#F7EAE6 }
+.d-delta--flat{ color:var(--d-muted); background:var(--d-surface-3) }
+
+/* ---------- 7. BARRAS / RANKING (sin librería) ------------- */
+.d-rank{ display:grid; }
+.d-rank a{ display:grid; grid-template-columns:1fr auto; gap:4px var(--s-3);
+  align-items:baseline; min-height:56px; padding:var(--s-2) 0;
+  border-bottom:1px solid var(--d-line-soft); }
+.d-rank__name{ font-size:15px; font-weight:600; color:var(--d-ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.d-rank__val{ font-size:15.5px; font-weight:700; color:var(--d-ink); white-space:nowrap; }
+.d-rank__track{ grid-column:1/-1; height:6px; border-radius:var(--r-pill);
+  background:var(--d-surface-3); overflow:hidden; }
+.d-rank__fill{ display:block; height:100%; min-width:3px; border-radius:var(--r-pill);
+  background:var(--d-green-acc); }
+.d-rank__meta{ grid-column:1/-1; font-size:12px; color:var(--d-muted); }
+.d-rank__scale{ font-size:var(--fs-xs); color:var(--d-muted); padding-bottom:var(--s-2); }
+/* barra apilada de dos o tres tramos (embudo de Camila, domicilio/retiro) */
+.d-stack{ display:flex; height:14px; border-radius:var(--r-pill); overflow:hidden;
+  background:var(--d-surface-3); }
+.d-stack i{ display:block; height:100%; }
+.d-stack .ok{ background:var(--d-green-acc) } .d-stack .wait{ background:var(--d-yellow) }
+.d-stack .off{ background:#CFCFCF }
+.d-stack__legend{ display:grid; gap:6px; margin-top:var(--s-3); font-size:var(--fs-sm); }
+.d-stack__legend div{ display:grid; grid-template-columns:12px 1fr auto; gap:8px; align-items:center; }
+.d-stack__legend i{ width:10px; height:10px; border-radius:3px; }
+
+/* ---------- 8. ESTADOS (verde=salió bien, ámbar=pendiente) -- */
+.d-badge{ display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px;
+  border-radius:var(--r-pill); font-size:12px; font-weight:600; white-space:nowrap; }
+.d-badge::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.d-badge--ok{ background:var(--d-green-wash); color:var(--d-green) }
+.d-badge--wait{ background:var(--d-amber-wash); color:var(--d-amber-ink) }
+.d-badge--bad{ background:var(--d-broken-wash); color:var(--d-broken) }
+.d-badge--off{ background:var(--d-surface-3); color:var(--d-ink-2) }
+
+/* ---------- 9. TABLA (≥900px) ------------------------------ */
+.d-table{ width:100%; border-collapse:collapse; font-size:var(--fs-cell); }
+.d-table thead th{ position:sticky; top:0; z-index:1; height:36px; padding:0 var(--s-4);
+  background:#fff; text-align:left; white-space:nowrap; font-size:var(--fs-eyebrow);
+  font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--d-muted);
+  border-bottom:1px solid var(--d-line); }
+.d-table thead th button{ border:0; background:transparent; font:inherit; color:inherit;
+  cursor:pointer; padding:0; min-height:36px; }
+.d-table td,.d-table tbody th{ height:var(--d-row-h); padding:0 var(--s-4); text-align:left;
+  vertical-align:middle; font-weight:400; color:var(--d-ink-2);
+  border-bottom:1px solid var(--d-line-soft); }
+.d-table tbody tr:hover td{ background:#FAFBF8; }
+.d-table .key{ font-weight:600; color:var(--d-ink) }
+.d-table .num,.d-table .money{ text-align:right; white-space:nowrap }
+.d-table .money{ font-weight:600; color:var(--d-ink) }
+.d-table .when{ color:var(--d-muted); font-size:var(--fs-sm); white-space:nowrap }
+.d-table tfoot td{ height:44px; font-weight:700; color:var(--d-ink);
+  background:var(--d-surface-2); border-top:1px solid var(--d-line) }
+/* filas fantasma: con 3 pedidos se dibujan 5 rayas para que la tarjeta no colapse.
+   <div className="d-ghost" style={{'--n':Math.max(0,8-filas.length)}} aria-hidden/> */
+.d-ghost{ height:calc(var(--d-row-h) * var(--n,0));
+  background-image:repeating-linear-gradient(to bottom,
+    #fff 0 calc(var(--d-row-h) - 1px),
+    var(--d-line-soft) calc(var(--d-row-h) - 1px) var(--d-row-h)); }
+
+/* Tarjeta de pedido: es lo que reemplaza a la tabla por debajo de 900px */
+.d-orow{ display:grid; gap:4px; padding:14px; background:#fff;
+  border:1px solid var(--d-line); border-radius:var(--r-lg); }
+.d-orow__top{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+.d-orow__top .d-badge{ margin-left:auto; }
+.d-orow__total{ font-size:22px; font-weight:700; color:var(--d-ink); }
+.d-orow__who{ font-size:13px; color:var(--d-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (min-width:900px){ .d-orow{ display:none } }
+@media (max-width:899px){ .d-table{ display:none } }
+
+/* ---------- 10. VACÍO, CARGA, ERROR ------------------------ */
+.d-empty{ display:grid; justify-items:center; gap:6px; text-align:center;
+  padding:var(--s-8) var(--s-5); border:1px dashed #D9D9D9; border-radius:var(--r-md);
+  background:#fff; color:var(--d-muted); font-size:14px; }
+.d-empty strong{ font-size:17px; font-weight:600; color:var(--d-ink); }
+.d-skel{ height:12px; border-radius:var(--r-xs); background:var(--d-surface-3); }
+.d-skel--num{ height:34px; width:7ch; }
+.d-skel--row{ height:var(--d-row-h); border-radius:0; border-bottom:1px solid var(--d-line-soft); background:#fff; }
+.d-dim{ opacity:.45; transition:opacity 120ms ease; }   /* al cambiar de filtro */
+.d-banner{ display:flex; align-items:center; gap:var(--s-3); min-height:48px;
+  padding:var(--s-2) var(--s-6); font-size:var(--fs-sm); font-weight:600; }
+.d-banner--err{ background:var(--d-broken-wash); color:var(--d-broken);
+  border-left:4px solid var(--d-broken); }
+.d-banner--off{ background:var(--d-surface-3); color:var(--d-ink-2);
+  border-left:4px solid #B8BAB2; }
+
+/* ---------- 11. BOTONES Y BARRA DE ACCIÓN ------------------ */
+.d-btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-height:44px; padding:0 var(--s-4); border-radius:var(--r-sm);
+  border:1px solid var(--d-line-ctl); background:#fff; font:600 13.5px/1 var(--ff);
+  color:var(--d-ink-2); cursor:pointer; }
+.d-btn--primary{ background:var(--d-green); border-color:var(--d-green); color:#fff; }
+.d-btn--primary:hover{ background:var(--d-green-dark); }
+@media (max-width:899px){
+  .d-actionbar{ position:fixed; inset:auto 0 0 0; z-index:55; display:grid;
+    grid-template-columns:1fr 1fr; gap:10px; padding:8px 14px calc(8px + env(safe-area-inset-bottom));
+    background:#fff; border-top:1px solid var(--d-line); }
+  .d-actionbar .d-btn{ min-height:48px; }
+}
+
+/* ---------- 12. MOVIMIENTO E IMPRESIÓN --------------------- */
+/* Nada se anima al montar: a este volumen, cada milisegundo de
+   animación es un milisegundo en que el número no se puede leer.
+   Sólo el destello de un dato que ACABA de llegar. */
+.d-flash{ animation:d-flash 400ms ease-out 1; }
+@keyframes d-flash{ from{ background:var(--d-green-wash) } to{ background:transparent } }
+@media (prefers-reduced-motion:reduce){
+  .dash *{ animation:none !important; transition:none !important; }
+}
+@media print{
+  .dash{ background:#fff }
+  .d-rail,.d-tabbar,.d-filterbar,.d-filterpill,.d-actionbar,.d-toolbar,.d-btn{ display:none !important }
+  .d-main{ padding:0 }
+  .d-card,.d-stat{ box-shadow:none; border:1px solid #CFD2CB; break-inside:avoid }
+  .d-card--tall{ min-height:0 } .d-ghost{ display:none }
+  .d-stats{ grid-template-columns:repeat(4,1fr) }
+  .d-table td{ height:32px }
+}
+/* styles.css ya trae su propio @media print; como todo el tablero vive
+   bajo .dash, las dos reglas no se pisan. */
+
+/* ---------- piezas que faltaban del sistema --------------- */
+.dash .d-hero{ background:var(--d-surface); border:1px solid var(--d-line);
+  border-radius:var(--r-lg); padding:var(--s-6); box-shadow:var(--sh-1); }
+.dash .d-hero--tight{ padding:var(--s-5) var(--s-6); }
+.dash .d-hero__line{ font-size:var(--fs-h1); font-weight:600; line-height:1.25; margin:6px 0 10px; }
+.dash .d-hero__money{ font-size:var(--fs-hero); font-weight:800; letter-spacing:-.02em; line-height:1; }
+.dash .d-hero__foot{ margin-top:8px; font-size:var(--fs-xs); color:var(--d-muted); }
+
+.dash .d-num{ text-align:right; white-space:nowrap; }
+.dash .d-total td{ font-weight:700; border-top:1px solid var(--d-line); }
+
+.dash .d-list{ list-style:none; padding:0; margin:0; display:grid; gap:10px; }
+.dash .d-list li{ display:grid; gap:2px; font-size:var(--fs-body); }
+.dash .d-list li span:last-child{ font-size:var(--fs-xs); color:var(--d-muted); }
+
+.dash .d-chiprow{ display:flex; gap:6px; flex-wrap:wrap; }
+.dash .d-linkbtn{ background:none; border:0; color:var(--d-green); font-weight:600;
+  font-size:var(--fs-sm); cursor:pointer; padding:0 0 0 10px; text-decoration:underline; }
+.dash .d-updated{ max-width:var(--d-wrap); margin:var(--s-5) auto 0;
+  font-size:var(--fs-xs); color:var(--d-muted); }
+
+.dash .d-sheetwrap{ position:fixed; inset:0; z-index:70; background:rgba(20,22,18,.38);
+  display:flex; align-items:flex-end; }
+.dash .d-sheetlist{ max-height:44vh; overflow:auto; display:grid; gap:2px; margin:6px 0 14px; }
+.dash .d-sheetrow{ display:flex; justify-content:space-between; align-items:center; gap:10px;
+  width:100%; min-height:52px; padding:0 14px; border:0; border-radius:var(--r-sm);
+  background:var(--d-surface-2); font-size:var(--fs-body); text-align:left; cursor:pointer; color:inherit; }
+.dash .d-sheetrow.on{ background:var(--d-green-wash); color:var(--d-green); font-weight:600; }
+.dash .d-btn--block{ width:100%; justify-content:center; }
+
+/* El riel es un ancla, no una tabla: en el teléfono se esconde la nav. */
+@media (min-width:900px){ .dash .d-filterpill{ display:none; } }
+
+/* ---------- correcciones de maquetado -------------------- */
+.dash{ overflow-x:hidden; }
+.dash .d-main{ max-width:100%; }
+
+/* Las cifras se apilan en pantalla chica: cuatro columnas en 375px no caben. */
+@media (max-width:1000px){ .dash .d-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:520px){ .dash .d-stats{ grid-template-columns:1fr; } }
+
+/* El ranking lo dibuja un <button>, no un <a>. */
+.dash .d-rank{ list-style:none; padding:0; margin:0; }
+.dash .d-rank__row{ display:grid; grid-template-columns:minmax(0,1fr) 84px auto;
+  align-items:center; gap:var(--s-3); width:100%; min-height:48px; padding:var(--s-2) 0;
+  background:none; border:0; border-bottom:1px solid var(--d-line-soft);
+  font-family:var(--ff); color:inherit; text-align:left; cursor:pointer; }
+.dash .d-rank__row:disabled{ cursor:default; }
+.dash .d-rank__row:not(:disabled):hover .d-rank__name{ color:var(--d-green); }
+.dash .d-rank__bar{ display:block; height:8px; border-radius:var(--r-pill);
+  background:var(--d-surface-3); overflow:hidden; }
+.dash .d-rank__bar i{ display:block; height:100%; background:var(--d-green-acc); border-radius:var(--r-pill); }
+.dash .d-rank__meta{ grid-column:3; font-size:var(--fs-xs); color:var(--d-muted); }
+@media (max-width:520px){ .dash .d-rank__row{ grid-template-columns:minmax(0,1fr) auto; }
+  .dash .d-rank__bar{ display:none; } }
+
+/* Tablas anchas: la única excepción con scroll propio, nunca la página entera. */
+.dash .d-card__body{ overflow-x:auto; }
+.dash .d-table{ width:100%; border-collapse:collapse; font-size:var(--fs-cell); }
+.dash .d-table th{ text-align:left; font-size:var(--fs-eyebrow); font-weight:700;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--d-muted);
+  padding:0 10px 8px; border-bottom:1px solid var(--d-line); white-space:nowrap; }
+.dash .d-table td{ padding:11px 10px; border-bottom:1px solid var(--d-line-soft);
+  color:var(--d-ink-2); vertical-align:middle; }
+.dash .d-table a{ color:var(--d-green); font-weight:600; }
+.dash .d-table tr:last-child td{ border-bottom:0; }
+
+/* El contenedor de página es UNA columna. Explícito, para que ningún hijo con
+   `span` le invente columnas implícitas. */
+.dash .d-wrap{ grid-template-columns:minmax(0,1fr); }
+.dash .d-grid{ grid-column:1; }
+
+/* Las filas de la tarjeta se dimensionan por contenido. Con `1fr`, un cuerpo
+   con scroll propio se vuelve contenedor de desplazamiento y colapsa a 0. */
+.dash .d-card{ grid-template-rows:auto auto auto; }
+.dash .d-card__body{ min-height:0; }
+
+/* ---------- tablas en el teléfono -------------------------
+   La especificación prohíbe tablas bajo 900px, y tiene razón: con una mano,
+   el scroll horizontal se confunde con el gesto de volver y siempre queda
+   escondida la columna del total. En vez de ocultarlas, cada fila se convierte
+   en una tarjeta legible, con la etiqueta de cada dato delante. Un solo
+   marcado, sin duplicar componentes. */
+@media (max-width:899px){
+  .dash .d-table{ display:block; }
+  .dash .d-table thead{ display:none; }
+  .dash .d-table tbody{ display:grid; gap:10px; }
+  .dash .d-table tr{ display:grid; gap:2px; padding:12px 14px;
+    background:var(--d-surface-2); border:1px solid var(--d-line-soft);
+    border-radius:var(--r-sm); }
+  .dash .d-table td{ display:flex; justify-content:space-between; align-items:baseline;
+    gap:14px; padding:2px 0; border:0; font-size:13.5px; }
+  .dash .d-table td::before{ content:attr(data-l); flex:0 0 auto;
+    font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--d-muted); }
+  .dash .d-table td.d-num{ text-align:right; }
+  /* La primera celda es el título de la tarjeta: sin etiqueta y más grande. */
+  .dash .d-table td:first-child{ font-size:15px; font-weight:600; padding-bottom:6px;
+    margin-bottom:4px; border-bottom:1px solid var(--d-line-soft); }
+  .dash .d-table td:first-child::before{ display:none; }
+  .dash .d-table tr.d-total{ background:var(--d-green-wash); }
+}
