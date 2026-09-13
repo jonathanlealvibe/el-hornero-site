@@ -47,9 +47,9 @@ const REFERENCIAS = ['Edificio Torres del Parque, piso 4', 'Casa esquinera port�
 // Solo los locales del piloto: encender los 29 con 11 pedidos al día haría que
 // 21 sedes muestren cero y el tablero parezca roto.
 const PILOTO = ['floresta', 'gonzalez-suarez', 'republica-del-salvador', 'veintimilla',
-  'cumbaya', 'isla-floreana', 'bicentenario']
+  'cumbaya', 'isla-floreana', 'bicentenario', 'tumbaco', 'ponciano', 'quitumbe', 'plaza-del-valle', 'carapungo']
 
-const REPARTIDORES = ['Wilson', 'Édison', 'Kevin', 'Bryan', 'Dario', 'Alexis', 'Jefferson', 'Steeven']
+const REPARTIDORES = ['Wilson', 'Édison', 'Kevin', 'Bryan', 'Darío', 'Alexis', 'Jefferson', 'Steeven', 'Marlon', 'Andrés', 'Fabián', 'Cristian', 'Luis', 'Paúl']
 
 const MOTIVOS = ['precio', 'fuera de cobertura', 'demora estimada', 'producto no disponible', 'solo consultaba']
 
@@ -104,7 +104,7 @@ export function sembrar({ dias = 14 } = {}) {
     const fecha = new Date(hoy.getTime() - d * 86400000)
     const dow = fecha.getDay()
     const finde = dow === 5 || dow === 6 || dow === 0
-    const nPedidos = finde ? entre(18, 26) : entre(9, 16)
+    const nPedidos = finde ? entre(30, 42) : entre(16, 26)
 
     for (let i = 0; i < nPedidos; i++) {
       const persona = pick(gente)
@@ -146,10 +146,10 @@ export function sembrar({ dias = 14 } = {}) {
       // calle, para que el mapa de la flota tenga algo que mostrar.
       const esHoy = d === 0
       let estado = 'entregado'
-      if (esHoy && i >= nPedidos - 8) {
-        // Tres motos en la calle siempre: el mapa de la demo tiene que mostrar algo.
-        if (i < nPedidos - 5) { modalidad = 'domicilio'; estado = 'camino' }
-        else estado = modalidad === 'domicilio' ? pick(['camino', 'horno', 'recibido']) : pick(['horno', 'recibido'])
+      if (esHoy && i >= nPedidos - 16) {
+        // Diez motos en la calle siempre: es lo que la demo tiene que enseñar.
+        if (i < nPedidos - 6) { modalidad = 'domicilio'; estado = 'camino' }
+        else estado = modalidad === 'domicilio' ? pick(['horno', 'recibido']) : pick(['horno', 'recibido'])
         // Lo que está en marcha entró hace poco: un ticket de 150 minutos no existe.
         t.setTime(Date.now() - entre(estado === 'recibido' ? 1 : estado === 'horno' ? 6 : 12, estado === 'camino' ? 44 : 22) * 60000)
       }

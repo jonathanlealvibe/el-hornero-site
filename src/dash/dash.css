@@ -589,3 +589,48 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
 .d-vivo-empty{ display:grid; gap:10px; justify-items:start; padding:20px; border:1px dashed var(--d-line-ctl); border-radius:var(--r-md); }
 .d-vivo-empty h3{ font-size:17px; font-weight:600; }
 .d-vivo-empty ol{ margin:0; padding-left:20px; color:var(--d-ink-2); line-height:1.6; }
+
+/* ---------- 18. DONAS, BARRAS CON UMBRAL, MENÚ DE ESTADO ------ */
+.d-dona{ display:grid; grid-template-columns:132px minmax(0,1fr); gap:16px; align-items:center; }
+.d-dona__aro{ position:relative; width:132px; height:132px; }
+.d-dona__aro svg{ width:100%; height:100%; display:block; }
+.d-dona__seg{ stroke-linecap:butt; }
+.d-dona__centro{ position:absolute; inset:0; display:grid; place-content:center; text-align:center; }
+.d-dona__centro b{ font-size:26px; font-weight:600; letter-spacing:-.02em; color:var(--d-ink); line-height:1; }
+.d-dona__centro span{ display:block; margin-top:4px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--d-muted); }
+.d-dona__leyenda{ list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+.d-dona__leyenda li{ display:grid; grid-template-columns:10px minmax(0,1fr) auto; gap:10px; align-items:center; min-height:28px; font-size:13.5px; color:var(--d-ink-2); }
+.d-dona__leyenda i{ width:10px; height:10px; border-radius:3px; }
+.d-dona__leyenda a{ color:var(--d-ink-2); } .d-dona__leyenda a:hover{ color:var(--d-green-lit); }
+.d-dona__leyenda b{ color:var(--d-ink); font-weight:600; white-space:nowrap; }
+@media (max-width:560px){ .d-dona{ grid-template-columns:110px minmax(0,1fr); } .d-dona__aro{ width:110px; height:110px; } .d-dona__centro b{ font-size:22px; } }
+.d-barras{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+.d-barras li{ display:grid; grid-template-columns:minmax(0,1fr) 3fr auto; gap:10px; align-items:center; min-height:28px; font-size:13.5px; }
+.d-barras__lab{ color:var(--d-ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.d-barras__lab a{ color:inherit; } .d-barras__lab a:hover{ color:var(--d-green-lit); }
+.d-barras__track{ position:relative; display:block; height:8px; border-radius:var(--r-pill); background:var(--d-surface-3); overflow:visible; }
+.d-barras__track i{ display:block; height:100%; border-radius:var(--r-pill); background:var(--d-green-bar); min-width:3px; }
+.d-barras li.tarde .d-barras__track i{ background:var(--d-down); }
+.d-barras__track em{ position:absolute; top:-4px; width:2px; height:16px; background:var(--d-yellow); border-radius:1px; }
+.d-barras__val{ font-weight:600; color:var(--d-ink); white-space:nowrap; font-size:13px; }
+.d-barras li.tarde .d-barras__val{ color:var(--d-down); }
+.d-menu{ position:relative; }
+.d-menu__lista{ position:absolute; right:0; top:calc(100% + 6px); z-index:20; min-width:220px; padding:6px; display:grid; gap:2px;
+  background:var(--d-surface-2); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-md); box-shadow:var(--sh-2); }
+.dash--claro .d-menu__lista{ background:#fff; border-color:#E3E5DF; }
+.d-menu__lista button{ display:flex; align-items:center; gap:10px; width:100%; min-height:40px; padding:0 12px; border:0; border-radius:var(--r-xs);
+  background:transparent; color:var(--d-ink-2); font:500 13.5px var(--ff); text-align:left; cursor:pointer; }
+.d-menu__lista button:hover{ background:var(--d-surface-3); color:var(--d-ink); }
+.d-menu__lista button i{ width:9px; height:9px; border-radius:50%; border:2px solid var(--d-line-ctl); flex:0 0 auto; }
+.d-menu__lista button.hecho i{ background:var(--d-green-lit); border-color:var(--d-green-lit); }
+.d-menu__lista button.actual{ color:var(--d-ink); font-weight:600; } .d-menu__lista button.actual i{ background:var(--d-yellow); border-color:var(--d-yellow); }
+.d-menu__lista button.siguiente{ color:var(--d-green-lit); }
+.d-menu__lista button.peligro{ color:var(--d-down); } .d-menu__lista button.peligro:hover{ color:var(--d-broken); }
+.d-menu__lista hr{ border:0; border-top:1px solid var(--d-line-soft); margin:4px 0; }
+.d-ticket__next{ white-space:nowrap; }
+@media (prefers-reduced-motion:no-preference){
+  @keyframes d-dona{ from{ stroke-dasharray:0 100 } }
+  .d-dona__seg{ animation:d-dona 700ms var(--e-out) both; animation-delay:calc(var(--i,0)*80ms) }
+  .d-barras__track i{ animation:d-recorta var(--t-bar) var(--e-out) both; animation-delay:calc(var(--i,0)*40ms) }
+  .d-menu__lista{ animation:d-rise 160ms var(--e-out) both }
+}

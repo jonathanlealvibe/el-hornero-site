@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as S from './store.js'
 import FleetMap from './FleetMap.jsx'
 import { PorQueCambio, DondeSeVendeMas } from './graficos.jsx'
-import { Columnas, AreaLinea, Bullet } from './trazos.jsx'
+import { Columnas, AreaLinea, Bullet, Dona, BarrasUmbral, ColumnasSimples } from './trazos.jsx'
 import { money, num, hhmm, fecha, fechaLarga, tasa, SIN_DATO, UMBRALES } from './format.js'
 import { hrefPanel, irCon, PERIODO_FRASE } from './nav.js'
 import { useVersion } from './useStore.js'
 import { useEntrada, useNuevos, usarCifra, marcar, useMovil } from './motion.js'
 import { T } from './i18n.js'
-import { cuenta, CANAL, MODALIDAD, PAGO, ESTADO, MOTIVO, estadoTexto, tituloLista, titularHoy, diaSemana, diaLargo } from './textos.js'
-import { EstadoPedido, CampoEditable, useToast } from './Editable.jsx'
+import { cuenta, CANAL, MODALIDAD, PAGO, RESULTADO, ESTADO, MOTIVO, estadoTexto, tituloLista, titularHoy, diaSemana, diaLargo } from './textos.js'
+import { EstadoPedido, CampoEditable, MenuEstado, useToast } from './Editable.jsx'
 
 /* ---------------------------------------------------------------- piezas */
 
@@ -303,11 +303,7 @@ export function Hoy({ F, datos, onNuevos }) {
                       <span className="d-ticket__l1">{p.pedido_id} · {!local ? `${S.nombreLocal(p.local_id)} · ` : ''}{MODALIDAD[p.modalidad]}</span>
                       <span className="d-ticket__l2">{per ? `${per.nombre} ${per.apellido}` : T('Sin cliente', 'No customer')} · {platos(nItems)} · {money(p.total_cobrado)}</span>
                       <span className="d-ticket__l3"><Badge estado={p.estado} modalidad={p.modalidad} />{enCamino && p.repartidor ? <span>{p.repartidor}, {T('fuera', 'out')} {min} min</span> : null}</span>
-                      {sig && (
-                        <button type="button" className="d-btn d-btn--sm d-ticket__next" onClick={(e) => { e.preventDefault(); e.stopPropagation(); avanzar(p) }}>
-                          {estadoTexto(sig, p.modalidad)} ›
-                        </button>
-                      )}
+                      <MenuEstado pedido={p} href={hrefPanel('pedidos/' + p.pedido_id, { from: 'hoy' }, A)} />
                     </a>
                   )
                 })}
@@ -323,25 +319,30 @@ export function Hoy({ F, datos, onNuevos }) {
       <div className="d-grid">
         <Card span={4} i={3} title={T('Motos', 'Riders')} sub={T('Cómo va el reparto hoy', 'How delivery is going today')}
           foot={<a href={hrefPanel('motos', {}, A)} data-drill>{T('Abrir Motos ›', 'Open Riders ›')}</a>}>
-          <ul className="d-lineas" style={{ margin: 0 }}>
-            <li><a href={hrefPanel('motos', {}, A)}><b>{num(enRuta.length)}</b>{T(' motos en la calle ahora', ' riders out now')}<span className="go">›</span></a></li>
+          {enRuta.length === 0 ? <p className="d-empty">{T('Ninguna moto en la calle ahora.', 'No riders out right now.')}</p> : (
+            <>
+              <p className="d-eyebrow" style={{ marginBottom: 8 }}>{T('Minutos fuera · la raya amarilla son los 35', 'Minutes out · the yellow line is 35')}</p>
+              <BarrasUmbral filas={enRuta.slice(0, 6).map((e) => ({ etiqueta: `${e.repartidor || T('Moto', 'Rider')} · ${S.nombreLocal(e.local_id)}`, valor: e.minutos_fuera ?? 0, id: e.pedido_id }))} href={(f) => hrefPanel('motos/' + f.id, {}, A)} />
+              {enRuta.length > 6 && <a className="d-mas" href={hrefPanel('motos', {}, A)}>{T(`Ver las ${enRuta.length} motos ›`, `See all ${enRuta.length} riders ›`)}</a>}
+            </>
+          )}
+          <ul className="d-lineas">
             <li><a href={hrefPanel('motos', { atrasadas: '1' }, A)}><b className={enMarchaLate ? 'down' : ''}>{num(enMarchaLate)}</b>{T(' pasadas de 35 minutos', ' past 35 minutes')}<span className="go">›</span></a></li>
-            <li><a href={hrefPanel('pedidos', { estado: 'entregado', modalidad: 'domicilio', orden: 'minutos', from: 'hoy' }, A)}><b>{num(r.entregadas)}</b>{T(' entregas terminadas', ' finished deliveries')}{r.entregadas ? ` · ${tasa(r.aTiempo, r.entregadas).texto} ${T('a tiempo', 'on time')}` : ''}<span className="go">›</span></a></li>
-            <li><span><b>{masFuera ? `${masFuera.minutos_fuera} min` : SIN_DATO}</b>{masFuera ? ` · ${masFuera.repartidor || T('Motorizado', 'Rider')}, ${T('la que más lleva fuera', 'longest out')}` : T(' · ninguna fuera', ' · none out')}</span></li>
+            <li><a href={hrefPanel('pedidos', { estado: 'entregado', modalidad: 'domicilio', orden: 'minutos', from: 'hoy' }, A)}><b>{r.entregadas ? tasa(r.aTiempo, r.entregadas).texto : '0'}</b>{T(' entregas a tiempo hoy', ' on-time deliveries today')}<span className="go">›</span></a></li>
           </ul>
         </Card>
         <Card span={4} i={4} title="Camila" sub={T('Las llamadas de hoy', "Today's calls")}
           foot={<a href={hrefPanel('camila', { from: 'hoy' }, A)} data-drill>{T('Abrir Camila ›', 'Open Camila ›')}</a>}>
           {embudo.total === 0 ? <p className="d-empty">{T('Aún ninguna llamada hoy.', 'No calls yet today.')}</p> : (
             <>
-              <div className="d-stack" role="img" aria-label={T(`${embudo.pedidos} pidieron, ${embudo.sinPedido + embudo.colgo} no pidieron, ${embudo.total - embudo.contestadas} sin contestar`, `${embudo.pedidos} ordered, ${embudo.sinPedido + embudo.colgo} did not, ${embudo.total - embudo.contestadas} unanswered`)}>
-                <i className="ok" style={{ width: `${(embudo.pedidos / embudo.total) * 100}%` }} />
-                <i className="wait" style={{ width: `${((embudo.sinPedido + embudo.colgo) / embudo.total) * 100}%` }} />
-                <i className="off" style={{ width: `${((embudo.total - embudo.contestadas) / embudo.total) * 100}%` }} />
-              </div>
+              <Dona centro={embudo.pedidos} sub={T(`de ${embudo.total} llamadas`, `of ${embudo.total} calls`)}
+                partes={[
+                  { etiqueta: T('Pidieron', 'Ordered'), valor: embudo.pedidos, tono: 'ok', href: hrefPanel('camila', { resultado: 'pedido', from: 'hoy' }, A) },
+                  { etiqueta: T('No pidieron', 'Did not order'), valor: embudo.sinPedido, tono: 'wait', href: hrefPanel('camila', { resultado: 'sin_pedido', from: 'hoy' }, A) },
+                  { etiqueta: T('Colgaron', 'Hung up'), valor: embudo.colgo, tono: 'down', href: hrefPanel('camila', { resultado: 'colgo', from: 'hoy' }, A) },
+                  { etiqueta: T('Sin contestar', 'Unanswered'), valor: embudo.total - embudo.contestadas, tono: 'off', href: hrefPanel('camila', { resultado: 'no_contestada', from: 'hoy' }, A) },
+                ]} />
               <ul className="d-lineas">
-                <li><a href={hrefPanel('camila', { from: 'hoy' }, A)}><b>{embudo.total}</b>{T(' llamadas entraron', ' calls came in')}<span className="go">›</span></a></li>
-                <li><a href={hrefPanel('camila', { resultado: 'pedido', from: 'hoy' }, A)}><b>{embudo.pedidos}</b>{T(' terminaron en pedido', ' ended in an order')}<span className="go">›</span></a></li>
                 {embudo.motivos[0] && <li><a href={hrefPanel('camila', { motivo: embudo.motivos[0].motivo, from: 'hoy' }, A)}><b>{embudo.motivos[0].n}</b> {T('no pidieron:', 'did not order:')} {MOTIVO[embudo.motivos[0].motivo]?.corto.toLowerCase()}<span className="go">›</span></a></li>}
                 <li><a href={hrefPanel('camila', { cedula: '1', from: 'hoy' }, A)}><b>{embudo.conCedula}</b>{T(' dieron su cédula', ' gave their ID number')}<span className="go">›</span></a></li>
               </ul>
@@ -351,12 +352,16 @@ export function Hoy({ F, datos, onNuevos }) {
         <Card span={4} i={5} title={T('Clientes', 'Customers')} sub={T('Quién compró hoy', 'Who bought today')}
           foot={<a href={hrefPanel('clientes', {}, F)} data-drill>{T('Abrir Clientes ›', 'Open Customers ›')}</a>}>
           {clientesHoy.total === 0 ? <p className="d-empty">{T('Aún nadie compró hoy.', 'Nobody has bought yet today.')}</p> : (
-            <ul className="d-lineas" style={{ margin: 0 }}>
-              <li><a href={hrefPanel('pedidos', { from: 'hoy' }, A)}><b>{clientesHoy.total}</b>{T(' personas compraron hoy', ' people bought today')}<span className="go">›</span></a></li>
-              <li><span><b>{clientesHoy.repiten}</b>{T(' ya habían comprado antes', ' had bought before')}</span></li>
-              <li><span><b>{clientesHoy.nuevos}</b>{T(' compran por primera vez', ' are first-time buyers')}</span></li>
-              <li><span><b>{tasa(clientesHoy.conCedula, clientesHoy.total).texto}</b>{T(' con cédula registrada', ' with a registered ID')}</span></li>
-            </ul>
+            <>
+              <Dona centro={clientesHoy.total} sub={T('personas', 'people')}
+                partes={[
+                  { etiqueta: T('Ya habían comprado', 'Had bought before'), valor: clientesHoy.repiten, tono: 'ok', href: hrefPanel('clientes', {}, F) },
+                  { etiqueta: T('Compran por primera vez', 'First-time buyers'), valor: clientesHoy.nuevos, tono: 'wait', href: hrefPanel('clientes', {}, F) },
+                ]} />
+              <ul className="d-lineas">
+                <li><a href={hrefPanel('clientes', {}, F)}><b>{tasa(clientesHoy.conCedula, clientesHoy.total).texto}</b>{T(' con cédula registrada', ' with a registered ID')}<span className="go">›</span></a></li>
+              </ul>
+            </>
           )}
         </Card>
       </div>
@@ -373,8 +378,10 @@ export function Hoy({ F, datos, onNuevos }) {
           )}
         </Card>
         <Card span={4} i={7} title={T('Cómo pagaron', 'How they paid')} sub={T('Lo cobrado hoy por forma de pago', "Today's takings by payment method")}>
-          <Rank rows={pagos} label={(x) => PAGO[x.pago] || x.pago} meta={(x) => pedidosTxt(x.pedidos)}
-            href={(x) => hrefPanel('pedidos', { pago: x.pago, from: 'hoy' }, A)} d0={entrada ? 240 : 0} vacio={T('Aún no se cobró nada hoy.', 'Nothing taken yet today.')} />
+          {pagos.length === 0 ? <p className="d-empty">{T('Aún no se cobró nada hoy.', 'Nothing taken yet today.')}</p> : (
+            <Dona centro={<span style={{ fontSize: money(pagos.reduce((t, x) => t + x.total, 0)).length > 7 ? 15 : 19 }}>{money(pagos.reduce((t, x) => t + x.total, 0))}</span>} sub={T('cobrado', 'taken')} formato={money}
+              partes={pagos.map((x, i) => ({ etiqueta: `${PAGO[x.pago] || x.pago} · ${pedidosTxt(x.pedidos)}`, valor: x.total, tono: ['ok', 'lit', 'wait', 'off'][i] || 'off', href: hrefPanel('pedidos', { pago: x.pago, from: 'hoy' }, A) }))} />
+          )}
         </Card>
         <Card span={4} i={8} title={T('Dinero por tipo de comida', 'Money by food type')} sub={T('Lo cobrado hoy, plato por plato', "Today's takings, dish by dish")}>
           {cats.length < 3
@@ -629,8 +636,13 @@ export function Resumen({ F }) {
   const embudo = useMemo(() => S.embudoLlamadas(rango7), [rango7, version])
   const porLocal = useMemo(() => S.ventaPorLocal({ ...rango7, local: undefined }), [rango7, version])
   const top = useMemo(() => S.topProductos(rango7, 10), [rango7, version])
+  const porHora = useMemo(() => S.ventaPorHora(rango7), [rango7, version])
+  const porDow = useMemo(() => S.ventaPorDiaSemana(14, local), [local, version])
+  const canales = useMemo(() => S.ventaPorCanal(rango7), [rango7, version])
+  const modalidades = useMemo(() => S.ventaPorModalidad(rango7), [rango7, version])
   const entrada = useEntrada()
   const A = { ...F, periodo: '7d' }
+  const DOW = [T('lun', 'Mon'), T('mar', 'Tue'), T('mié', 'Wed'), T('jue', 'Thu'), T('vie', 'Fri'), T('sáb', 'Sat'), T('dom', 'Sun')]
   const totalCats = cats.reduce((t, c) => t + c.total, 0)
   const total7 = serie.valores.slice(-7).reduce((a, b) => a + b, 0)
   const conVenta = serie.valores.filter((v) => v > 0).length
@@ -684,6 +696,30 @@ export function Resumen({ F }) {
         </Card>
         <Card span={6} i={3} title={T('Dónde se vende más de qué', 'Where more of what is sold')} sub={T('Cada local contra los demás, no contra un promedio que ya lo incluye', 'Each branch against the rest, not against an average that already includes it')}>
           <DondeSeVendeMas filas={donde} />
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={6} i={6} title={T('A qué hora se vende', 'When the day sells')} sub={T('Lo cobrado por hora, los últimos 7 días', 'Takings by hour, the last 7 days')}>
+          <ColumnasSimples etiquetas={porHora.horas.map((h) => `${h}h`)} valores={porHora.valores} resaltar={porHora.valores.indexOf(Math.max(...porHora.valores))}
+            titulo={(i) => `${porHora.horas[i]}:00 – ${porHora.horas[i] + 1}:00: ${money(porHora.valores[i])}, ${pedidosTxt(porHora.pedidos[i])}`} />
+          <p className="d-chartfoot">{T('La columna verde claro es la hora que más vende.', 'The light-green column is the busiest hour.')}</p>
+        </Card>
+        <Card span={6} i={7} title={T('Qué día se vende más', 'Which day sells most')} sub={T('Promedio por día de la semana, los últimos 14 días', 'Average per weekday, the last 14 days')}>
+          <ColumnasSimples etiquetas={DOW} valores={porDow.valores} resaltar={porDow.valores.indexOf(Math.max(...porDow.valores))} alto={132}
+            titulo={(i) => `${DOW[i]}: ${money(porDow.valores[i])} ${T('en promedio', 'on average')}`} />
+          <p className="d-chartfoot">{T('Cada columna es lo que se cobra un día así, en promedio.', 'Each column is what a day like that takes, on average.')}</p>
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={6} i={8} title={T('Por dónde entran los pedidos', 'Where orders come from')} sub={T('Los últimos 7 días', 'The last 7 days')}>
+          <Dona centro={canales.reduce((t, c) => t + c.pedidos, 0)} sub={T('pedidos', 'orders')} formato={(v) => `${v}`}
+            partes={canales.map((c, i) => ({ etiqueta: `${CANAL[c.canal] || c.canal} · ${money(c.total)}`, valor: c.pedidos, tono: ['ok', 'wait', 'lit'][i] || 'off', href: hrefPanel('pedidos', { canal: c.canal, periodo: '7d', from: 'resumen' }, A) }))} />
+        </Card>
+        <Card span={6} i={9} title={T('A domicilio o para llevar', 'Delivery or pickup')} sub={T('Los últimos 7 días', 'The last 7 days')}>
+          <Dona centro={<span style={{ fontSize: money(modalidades.reduce((t, m) => t + m.total, 0)).length > 7 ? 15 : 19 }}>{money(modalidades.reduce((t, m) => t + m.total, 0))}</span>} sub={T('cobrado', 'taken')} formato={money}
+            partes={modalidades.map((m, i) => ({ etiqueta: `${MODALIDAD[m.modalidad] || m.modalidad} · ${pedidosTxt(m.pedidos)}`, valor: m.total, tono: ['ok', 'wait'][i] || 'off', href: hrefPanel('pedidos', { modalidad: m.modalidad, periodo: '7d', from: 'resumen' }, A) }))} />
         </Card>
       </div>
 

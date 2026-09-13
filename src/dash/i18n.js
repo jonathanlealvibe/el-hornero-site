@@ -15,7 +15,7 @@ export const T = (es, en) => (lang === 'en' && en != null ? en : es)
 export const locale = () => (lang === 'en' ? 'en-US' : 'es-EC')
 
 // Tema: oscuro por defecto; claro es la paleta de siempre.
-export const getTema = () => { try { return localStorage.getItem('eh.dash.tema') === 'claro' ? 'claro' : 'oscuro' } catch { return 'oscuro' } }
+export const getTema = () => { try { return localStorage.getItem('eh.dash.tema') === 'oscuro' ? 'oscuro' : 'claro' } catch { return 'claro' } }
 export function setTema(t) {
   const v = t === 'claro' ? 'claro' : 'oscuro'
   try { localStorage.setItem('eh.dash.tema', v) } catch { /* privado */ }

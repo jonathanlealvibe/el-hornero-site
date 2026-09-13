@@ -110,3 +110,81 @@ export function Bullet({ actual, base, etiqueta = 'semana pasada' }) {
     </div>
   )
 }
+
+// Dona: partes de un total. Cada tramo se dibuja una vez; la cifra va en el centro.
+// partes: [{ etiqueta, valor, tono, href }]. tono: ok | wait | off | down | acc
+const TONO = { ok: 'var(--d-green-bar)', lit: 'var(--d-green-lit)', wait: 'var(--d-yellow)', off: 'var(--d-line-ctl)', down: 'var(--d-down)', acc: 'var(--d-green-acc)', soft: 'var(--d-green-soft)' }
+export const Dona = memo(function Dona({ partes, centro, sub, formato = (v) => String(v), aria }) {
+  const total = partes.reduce((t, p) => t + p.valor, 0) || 1
+  let acc = 0
+  const key = partes.map((p) => p.valor).join('|')
+  return (
+    <div className="d-dona" role="img" aria-label={aria || partes.map((p) => `${p.etiqueta}: ${formato(p.valor)}`).join('. ')}>
+      <div className="d-dona__aro">
+        <svg key={key} viewBox="0 0 100 100" aria-hidden>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="var(--d-surface-3)" strokeWidth="12" />
+          {partes.map((p, i) => {
+            const pct = (p.valor / total) * 100
+            const start = acc; acc += pct
+            if (pct <= 0) return null
+            return <circle key={i} className="d-dona__seg" cx="50" cy="50" r="40" fill="none" stroke={TONO[p.tono] || TONO.ok} strokeWidth="12"
+              pathLength="100" strokeDasharray={`${Math.max(pct - 1.2, 0.6)} 100`} transform={`rotate(${start * 3.6 - 90} 50 50)`} style={{ '--i': i }} />
+          })}
+        </svg>
+        <div className="d-dona__centro"><b>{centro}</b>{sub && <span>{sub}</span>}</div>
+      </div>
+      <ul className="d-dona__leyenda">
+        {partes.map((p, i) => (
+          <li key={i}>
+            <i style={{ background: TONO[p.tono] || TONO.ok }} />
+            {p.href ? <a href={p.href}>{p.etiqueta}</a> : <span>{p.etiqueta}</span>}
+            <b>{formato(p.valor)}</b>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+})
+
+// Barras con umbral: minutos de cada moto contra los 35 que marcan "tarde".
+export const BarrasUmbral = memo(function BarrasUmbral({ filas, umbral = 35, max, unidad = 'min', href }) {
+  const tope = Math.max(max || 0, umbral * 1.3, ...filas.map((f) => f.valor)) 
+  return (
+    <ul className="d-barras" role="img" aria-label={filas.map((f) => `${f.etiqueta}: ${f.valor} ${unidad}`).join('. ')}>
+      {filas.map((f, i) => (
+        <li key={i} className={f.valor > umbral ? 'tarde' : ''}>
+          <span className="d-barras__lab">{href ? <a href={href(f)}>{f.etiqueta}</a> : f.etiqueta}</span>
+          <span className="d-barras__track">
+            <i style={{ width: `${(f.valor / tope) * 100}%`, '--i': i }} />
+            <em style={{ left: `${(umbral / tope) * 100}%` }} title={`${umbral} ${unidad}`} />
+          </span>
+          <span className="d-barras__val">{f.valor} {unidad}</span>
+        </li>
+      ))}
+    </ul>
+  )
+})
+
+// Columnas con cualquier etiqueta (horas, días de la semana).
+export const ColumnasSimples = memo(function ColumnasSimples({ etiquetas, valores, resaltar = -1, alto = 120, formato = money, href, titulo }) {
+  const n = etiquetas.length
+  const top = techo(Math.max(...valores, 1))
+  const key = valores.join('|')
+  return (
+    <div className="d-cols" style={{ '--alto': `${alto}px` }} role="img" aria-label={etiquetas.map((e, i) => `${e}: ${formato(valores[i])}`).join('. ')}>
+      <svg key={key} viewBox={`0 0 ${n * 10} 100`} preserveAspectRatio="none" shapeRendering="geometricPrecision" aria-hidden>
+        {valores.map((v, i) => {
+          const h = Math.max((v / top) * 100, v > 0 ? 0.8 : 0)
+          const rect = v > 0
+            ? <rect className={'d-col' + (i === resaltar ? ' hoy' : '')} x={i * 10 + 1.5} width="7" y={100 - h} height={h} style={{ '--i': i }} />
+            : <rect className="d-col d-col--cero" x={i * 10 + 1.5} width="7" y="98.5" height="1.5" style={{ '--i': i }} />
+          const t = titulo ? titulo(i) : `${etiquetas[i]}: ${formato(v)}`
+          return href ? <a key={i} href={href(i)}><title>{t}</title>{rect}</a> : <g key={i}><title>{t}</title>{rect}</g>
+        })}
+      </svg>
+      <div className="d-days__axis" style={{ gridTemplateColumns: `repeat(${n},1fr)` }} aria-hidden>
+        {etiquetas.map((e, i) => <span key={i} className={i === resaltar ? 'hoy' : ''}>{e}</span>)}
+      </div>
+    </div>
+  )
+})

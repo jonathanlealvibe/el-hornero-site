@@ -17,7 +17,7 @@ import { dayKey } from './format.js'
 import { getDatos } from './i18n.js'
 
 // Dos cajones separados: la demostración (inventada) y lo vivo (la tienda).
-const LS_DE = (m) => (m === 'vivo' ? 'elhornero.panel.vivo.v1' : 'elhornero.panel.v9')
+const LS_DE = (m) => (m === 'vivo' ? 'elhornero.panel.vivo.v1' : 'elhornero.panel.v10')
 let modo = getDatos()
 export const getModo = () => modo
 export function setModo(m) { modo = m === 'vivo' ? 'vivo' : 'demo'; db = null; emitir() }
@@ -736,4 +736,49 @@ export function dondeSeVendeMas(rango, { minUnidades = 12, minVeces = 1.4 } = {}
     }
   }
   return filas.sort((a, b) => b.orden - a.orden).slice(0, 5)
+}
+
+// ---------------------------------------------------------------- más cortes
+
+// A qué hora se vende: lo cobrado por hora del día (11 a 22).
+export function ventaPorHora(rango) {
+  const ps = pedidos(rango)
+  const horas = []
+  for (let h = 11; h <= 22; h++) horas.push(h)
+  const suma = Object.fromEntries(horas.map((h) => [h, 0]))
+  const cuenta = Object.fromEntries(horas.map((h) => [h, 0]))
+  for (const p of ps) { const h = new Date(p.creado_en).getHours(); if (suma[h] !== undefined) { suma[h] += p.total_cobrado; cuenta[h]++ } }
+  return { horas, valores: horas.map((h) => suma[h]), pedidos: horas.map((h) => cuenta[h]) }
+}
+
+// Qué día de la semana vende más (promedio por día sobre los últimos n días).
+export function ventaPorDiaSemana(n = 14, local) {
+  const d = cargar()
+  const desde = dayKey(new Date(Date.now() - (n - 1) * 86400000))
+  const suma = [0, 0, 0, 0, 0, 0, 0], dias = [0, 0, 0, 0, 0, 0, 0]
+  const vistos = new Set()
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado' || p.dia < desde) continue
+    if (local && p.local_id !== local) continue
+    const dow = new Date(p.dia + 'T12:00:00-05:00').getDay()
+    suma[dow] += p.total_cobrado
+    if (!vistos.has(p.dia)) { vistos.add(p.dia); dias[dow]++ }
+  }
+  // lunes primero
+  const orden = [1, 2, 3, 4, 5, 6, 0]
+  return { dow: orden, valores: orden.map((k) => (dias[k] ? suma[k] / dias[k] : 0)) }
+}
+
+export function ventaPorCanal(rango) {
+  const ps = pedidos(rango)
+  const map = new Map()
+  for (const p of ps) { const e = map.get(p.canal) || { canal: p.canal, total: 0, pedidos: 0 }; e.total += p.total_cobrado; e.pedidos++; map.set(p.canal, e) }
+  return [...map.values()].sort((a, b) => b.pedidos - a.pedidos)
+}
+
+export function ventaPorModalidad(rango) {
+  const ps = pedidos(rango)
+  const map = new Map()
+  for (const p of ps) { const e = map.get(p.modalidad) || { modalidad: p.modalidad, total: 0, pedidos: 0 }; e.total += p.total_cobrado; e.pedidos++; map.set(p.modalidad, e) }
+  return [...map.values()].sort((a, b) => b.pedidos - a.pedidos)
 }

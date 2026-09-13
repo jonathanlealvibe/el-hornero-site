@@ -182,3 +182,65 @@ export function CampoEditable({ etiqueta, valor, vacio = T('Sin dato', 'No data'
     </div>
   )
 }
+
+/* ---------------------------------------------------------- menú de estado */
+
+// El menú desplegable del ticket: cualquier paso, ver el pedido, cancelar.
+export function MenuEstado({ pedido, href }) {
+  const avisar = useToast()
+  const [abierto, setAbierto] = useState(false)
+  const [dialogo, setDialogo] = useState(false)
+  const [motivo, setMotivo] = useState(MOTIVOS()[0])
+  const wrap = useRef(null)
+  const pasos = S.pasosDe(pedido)
+  const idx = pasos.indexOf(pedido.estado)
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e) => { if (!wrap.current?.contains(e.target)) setAbierto(false) }
+    const tecla = (e) => { if (e.key === 'Escape') setAbierto(false) }
+    document.addEventListener('pointerdown', fuera); window.addEventListener('keydown', tecla)
+    return () => { document.removeEventListener('pointerdown', fuera); window.removeEventListener('keydown', tecla) }
+  }, [abierto])
+  const ir = (estado) => {
+    const antes = pedido.estado
+    setAbierto(false)
+    if (S.cambiarEstado(pedido.pedido_id, estado, { forzar: true })) {
+      avisar(T(`${pedido.pedido_id} pasó a ${estadoTexto(estado, pedido.modalidad)}`, `${pedido.pedido_id} moved to ${estadoTexto(estado, pedido.modalidad)}`), { deshacer: () => S.cambiarEstado(pedido.pedido_id, antes, { forzar: true }) })
+    }
+  }
+  const cancelar = () => { S.cancelarPedido(pedido.pedido_id, motivo); setDialogo(false); avisar(T(`${pedido.pedido_id} quedó cancelado`, `${pedido.pedido_id} was cancelled`)) }
+  const quieto = (e) => { e.preventDefault(); e.stopPropagation() }
+  return (
+    <span className="d-menu" ref={wrap} onClick={quieto}>
+      <button type="button" className="d-btn d-btn--sm d-ticket__next" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}>
+        {estadoTexto(pedido.estado, pedido.modalidad)} ▾
+      </button>
+      {abierto && (
+        <div className="d-menu__lista" role="menu">
+          {pasos.map((p, i) => (
+            <button key={p} type="button" role="menuitem" className={i < idx ? 'hecho' : i === idx ? 'actual' : i === idx + 1 ? 'siguiente' : ''} disabled={i === idx} onClick={() => ir(p)}>
+              <i /> {estadoTexto(p, pedido.modalidad)}{i === idx + 1 ? ' ›' : ''}
+            </button>
+          ))}
+          <hr />
+          {href && <button type="button" role="menuitem" onClick={() => { setAbierto(false); window.location.hash = href.replace(/^#/, '') }}>{T('Ver el pedido completo', 'See the full order')}</button>}
+          <button type="button" role="menuitem" className="peligro" onClick={() => { setAbierto(false); setDialogo(true) }}>{T('Cancelar el pedido…', 'Cancel the order…')}</button>
+        </div>
+      )}
+      {dialogo && (
+        <Dialogo titulo={T(`¿Cancelar el pedido ${pedido.pedido_id}?`, `Cancel order ${pedido.pedido_id}?`)} onCerrar={() => setDialogo(false)}>
+          <div className="d-radios">
+            {MOTIVOS().map((m) => (
+              <label key={m}><input type="radio" name={'motivo-' + pedido.pedido_id} checked={motivo === m} onChange={() => setMotivo(m)} /> {m}</label>
+            ))}
+          </div>
+          <p>{T(`Se restan ${money(pedido.total_cobrado)} de lo cobrado hoy y el cliente deja de verlo en su link.`, `${money(pedido.total_cobrado)} is taken off today's takings and the customer stops seeing it in their link.`)}</p>
+          <div className="d-dialog__acts">
+            <button type="button" className="d-btn" onClick={() => setDialogo(false)}>{T('No, dejarlo como está', 'No, leave it')}</button>
+            <button type="button" className="d-btn d-btn--danger" onClick={cancelar}>{T('Sí, cancelar', 'Yes, cancel')}</button>
+          </div>
+        </Dialogo>
+      )}
+    </span>
+  )
+}
