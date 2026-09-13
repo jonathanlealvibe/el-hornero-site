@@ -91,7 +91,8 @@ export async function getOrder(id, packed) {
   const o = all[id]; if (!o) return null
   // simulate progress: recibido -> horno (1 min) -> camino (2 min) -> entregado (6 min)
   const t = ((Date.now() - o.createdAt) / 60000) * (o.speed || 1)
-  const status = o.paid === false && o.payMethod === 'tarjeta' ? 'pendiente_pago' : t < 1 ? 'recibido' : t < 2 ? 'horno' : t < 6 ? 'camino' : 'entregado'
+  // Si alguien del local movió el pedido desde el tablero, manda ese estado, no el reloj.
+  const status = o.statusManual || (o.paid === false && o.payMethod === 'tarjeta' ? 'pendiente_pago' : t < 1 ? 'recibido' : t < 2 ? 'horno' : t < 6 ? 'camino' : 'entregado')
   let rider = o.rider
   if (status === 'camino') {
     const f = Math.min(1, (t - 2) / 4)

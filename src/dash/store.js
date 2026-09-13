@@ -14,8 +14,14 @@
 
 import { LOCALES } from '../locales.js'
 import { dayKey } from './format.js'
+import { getDatos } from './i18n.js'
 
-const LS = 'elhornero.panel.v7'
+// Dos cajones separados: la demostración (inventada) y lo vivo (la tienda).
+const LS_DE = (m) => (m === 'vivo' ? 'elhornero.panel.vivo.v1' : 'elhornero.panel.v9')
+let modo = getDatos()
+export const getModo = () => modo
+export function setModo(m) { modo = m === 'vivo' ? 'vivo' : 'demo'; db = null; emitir() }
+const LS = () => LS_DE(modo)
 
 const vacio = () => ({
   personas: {}, telefonos: {}, vinculos: [], direcciones: {},
@@ -25,7 +31,7 @@ const vacio = () => ({
 let db = null
 const cargar = () => {
   if (db) return db
-  try { db = JSON.parse(localStorage.getItem(LS)) || vacio() } catch { db = vacio() }
+  try { db = JSON.parse(localStorage.getItem(LS())) || vacio() } catch { db = vacio() }
   return db
 }
 
@@ -37,7 +43,10 @@ export const suscribir = (fn) => { oyentes.add(fn); return () => oyentes.delete(
 export const emitir = () => { version++; for (const fn of oyentes) fn(version) }
 export const refrescar = () => emitir()          // el reloj de 30 s llama aquí
 let silencio = false                              // la siembra escribe mil veces: un solo aviso al final
-const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(db)) } catch { /* lleno */ } if (!silencio) emitir() }
+const guardar = () => { try { localStorage.setItem(LS(), JSON.stringify(db)) } catch { /* lleno */ } if (!silencio) emitir() }
+// Lo que se mueve a mano en vivo se avisa a la tienda (vivo.js lo conecta).
+let alMoverEstado = null
+export const conectarTienda = (fn) => { alMoverEstado = fn }
 export const reset = () => { db = vacio(); guardar() }
 export const estado = () => cargar()
 export function enBloque(fn) { silencio = true; try { fn() } finally { silencio = false; guardar() } }
@@ -309,7 +318,9 @@ export function cambiarEstado(pedido_id, estado, { forzar = false } = {}) {
   if (j < 0) return false
   if (!forzar && j !== i + 1 && j !== i - 1) return false
   p.estado = estado
+  p.manual = true
   p.historial = { ...(p.historial || {}), [estado]: Date.now() }
+  if (p.origen === 'sitio' && alMoverEstado) alMoverEstado(pedido_id, estado)
   if (estado === 'camino' && p.modalidad === 'domicilio') {
     p.salio_en = p.salio_en || Date.now()
     if (!p.repartidor) p.repartidor = 'Motorizado'
@@ -329,8 +340,10 @@ export function cancelarPedido(pedido_id, motivo) {
   const p = d.pedidos[pedido_id]
   if (!p) return false
   p.estado = 'cancelado'
+  p.manual = true
   p.motivo_cancelacion = motivo || null
   p.historial = { ...(p.historial || {}), cancelado: Date.now() }
+  if (p.origen === 'sitio' && alMoverEstado) alMoverEstado(pedido_id, 'cancelado')
   guardar()
   return true
 }

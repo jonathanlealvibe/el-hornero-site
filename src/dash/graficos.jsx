@@ -1,4 +1,5 @@
 import { money } from './format.js'
+import { T } from './i18n.js'
 
 // Gráficos dibujados a mano. Regla: si es una barra o una regla, es un div.
 // Sin librería: una librería de gráficos pesa más que todos los datos de un día.
@@ -74,11 +75,11 @@ export function PorQueCambio({ n0, t0, n1, t1 }) {
   return (
     <>
       <p className="d-lede">
-        Esta semana se cobró <b>{money(Math.abs(total))} {total >= 0 ? 'más' : 'menos'}</b> que la anterior.
+        {T('Esta semana se cobró', 'This week took')} <b>{money(Math.abs(total))} {total >= 0 ? T('más', 'more') : T('menos', 'less')}</b> {T('que la anterior.', 'than the previous one.')}
       </p>
       <ul className="d-why">
-        {fila(`${n1 >= n0 ? 'Entraron' : 'Faltaron'} ${Math.abs(n1 - n0)} pedidos`, porPedidos)}
-        {fila(`Cada pedido fue ${money(Math.abs(t1 - t0))} ${t1 >= t0 ? 'más grande' : 'más chico'}`, porTamano)}
+        {fila(T(`${n1 >= n0 ? 'Entraron' : 'Faltaron'} ${Math.abs(n1 - n0)} pedidos`, `${Math.abs(n1 - n0)} ${n1 >= n0 ? 'more' : 'fewer'} orders`), porPedidos)}
+        {fila(T(`Cada pedido fue ${money(Math.abs(t1 - t0))} ${t1 >= t0 ? 'más grande' : 'más chico'}`, `Each order was ${money(Math.abs(t1 - t0))} ${t1 >= t0 ? 'bigger' : 'smaller'}`), porTamano)}
       </ul>
     </>
   )
@@ -88,17 +89,17 @@ export function PorQueCambio({ n0, t0, n1, t1 }) {
 // Se compara contra los OTROS locales, no contra un promedio que ya lo incluye.
 export function DondeSeVendeMas({ filas }) {
   if (!filas.length) {
-    return <p className="d-empty">Todavía no hay suficientes pedidos para comparar los locales entre sí.</p>
+    return <p className="d-empty">{T('Todavía no hay suficientes pedidos para comparar los locales entre sí.', 'Not enough orders yet to compare branches against each other.')}</p>
   }
   return (
     <ul className="d-mix">
       {filas.map((f, i) => (
         <li key={i}>
           <b>{f.local}</b>{' '}
-          vende <b>{f.veces}</b> {f.categoria.toLowerCase()} que el resto.
+          {T('vende', 'sells')} <b>{T(f.veces, f.veces === 'el doble de' ? 'twice as much' : 'a lot more')}</b> {f.categoria.toLowerCase()} {T('que el resto.', 'than the rest.')}
           <span className="d-mix__det">
-            De cada $100 que vende, <b>{money(f.aqui)}</b> son {f.categoria.toLowerCase()};
-            {' '}en los otros locales, {money(f.otros)}.
+            {T('De cada $100 que vende,', 'Of every $100 it sells,')} <b>{money(f.aqui)}</b> {T('son', 'is')} {f.categoria.toLowerCase()};
+            {' '}{T('en los otros locales,', 'in the other branches,')} {money(f.otros)}.
           </span>
         </li>
       ))}

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { money } from './format.js'
+import { T } from './i18n.js'
 
 // Regla de la casa: el SVG dibuja formas; las palabras van en HTML al lado.
 // Cada gráfico anima UNA vez por serie (key = valores), nunca en cada refresco.
@@ -21,7 +22,7 @@ export const Columnas = memo(function Columnas({ dias, valores, pedidos, referen
   const key = valores.join('|')
   return (
     <div className="d-cols" style={{ '--alto': `${alto}px` }} role="img"
-      aria-label={`Venta de los últimos ${n} días. Hoy ${money(valores[n - 1] || 0)}. Un día normal, ${money(prom)}.`}>
+      aria-label={T(`Venta de los últimos ${n} días. Hoy ${money(valores[n - 1] || 0)}. Un día normal, ${money(prom)}.`, `Sales for the last ${n} days. Today ${money(valores[n - 1] || 0)}. A normal day, ${money(prom)}.`)}>
       <div className="d-cols__finde" style={{ gridTemplateColumns: `repeat(${n},1fr)` }} aria-hidden>
         {dias.map((d) => <i key={d} className={esFinde(d) ? 'on' : ''} />)}
       </div>
@@ -42,11 +43,10 @@ export const Columnas = memo(function Columnas({ dias, valores, pedidos, referen
         })}
       </svg>
       <div className="d-days__axis" style={{ gridTemplateColumns: `repeat(${n},1fr)` }} aria-hidden>
-        {dias.map((d, i) => <span key={d} className={i === n - 1 ? 'hoy' : ''}>{i === n - 1 ? 'hoy' : d.slice(8)}</span>)}
+        {dias.map((d, i) => <span key={d} className={i === n - 1 ? 'hoy' : ''}>{i === n - 1 ? T('hoy', 'today') : d.slice(8)}</span>)}
       </div>
       <p className="d-chartfoot">
-        El fondo más claro son los fines de semana. La raya cortada es un día normal ({money(prom)}).
-        {pedidos ? '' : ''}
+        {T(`El fondo más claro son los fines de semana. La raya cortada es un día normal (${money(prom)}).`, `The lighter background marks weekends. The dashed line is a normal day (${money(prom)}).`)}
       </p>
     </div>
   )
@@ -103,7 +103,7 @@ export const AreaLinea = memo(function AreaLinea({ series, xMin = 660, xMax = 13
 export function Bullet({ actual, base, etiqueta = 'semana pasada' }) {
   const max = Math.max(actual, base, 1) * 1.15
   return (
-    <div className="d-bullet" role="img" aria-label={`Hoy ${money(actual)}. La ${etiqueta}, ${money(base)}.`}>
+    <div className="d-bullet" role="img" aria-label={T(`Hoy ${money(actual)}. La ${etiqueta}, ${money(base)}.`, `Today ${money(actual)}. ${etiqueta}: ${money(base)}.`)}>
       <i className="d-bullet__fill" style={{ width: `${(actual / max) * 100}%` }} />
       <span className="d-bullet__mark" style={{ left: `${(base / max) * 100}%` }} />
       <span className="d-bullet__lab" style={{ left: `${(base / max) * 100}%` }}>{etiqueta}</span>

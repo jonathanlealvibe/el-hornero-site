@@ -82,10 +82,12 @@ html[data-tema="oscuro"]{ background:#0B0F0C; color-scheme:dark; }
 .d-rail__mark{ font-style:italic; font-weight:600; font-size:19px; letter-spacing:-.02em; white-space:nowrap; }
 .d-rail__mark span{ font-style:normal; font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--d-yellow); margin-left:8px; }
 .d-rail nav{ display:flex; gap:var(--s-5); height:100%; }
-.d-rail nav a{ display:flex; align-items:center; font-size:15px; font-weight:500; color:rgba(242,244,240,.72); border-bottom:3px solid transparent; transition:color var(--t-tap) ease-out; }
+.d-rail nav a{ display:flex; align-items:center; white-space:nowrap; font-size:15px; font-weight:500; color:rgba(242,244,240,.72); border-bottom:3px solid transparent; transition:color var(--t-tap) ease-out; }
 .d-rail nav a:hover{ color:#FFF; }
 .d-rail nav a[aria-current="page"]{ color:#FFF; border-bottom-color:var(--d-yellow); }
-.d-rail__user{ margin-left:auto; display:flex; align-items:center; gap:var(--s-4); font-size:13px; }
+.d-rail__user{ margin-left:auto; display:flex; align-items:center; gap:var(--s-3); font-size:13px; white-space:nowrap; }
+@media (max-width:1380px){ .d-rail__user .d-demo{ display:none; } }
+@media (max-width:1180px){ .d-rail nav{ gap:var(--s-3); } .d-rail nav a{ font-size:14px; } .d-conm button{ padding:0 8px; } }
 .d-rail__user a{ color:var(--d-muted); }
 .d-vivo{ display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--d-muted); white-space:nowrap; }
 .d-vivo i{ position:relative; width:8px; height:8px; border-radius:50%; background:var(--d-green-lit); flex:0 0 auto; }
@@ -112,6 +114,7 @@ html[data-tema="oscuro"]{ background:#0B0F0C; color-scheme:dark; }
 .d-filterbar{ position:sticky; top:var(--d-rail-h); z-index:30; min-height:var(--d-bar-h); display:flex; align-items:center; gap:var(--s-3);
   padding:0 var(--s-6); background:var(--d-canvas); border-bottom:1px solid var(--d-line); }
 .d-filterbar__right{ margin-left:auto; display:flex; align-items:center; gap:var(--s-2); }
+.d-filterbar > a.d-tienda{ color:var(--d-green-lit); font-weight:600; font-size:13px; }
 .d-back{ display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:var(--d-green-lit); min-height:44px; }
 .d-select,.d-input{ height:36px; padding:0 var(--s-3); border:1px solid var(--d-line-ctl); border-radius:var(--r-sm);
   background:var(--d-surface-2); font:400 13.5px/1 var(--ff); color:var(--d-ink); }
@@ -174,7 +177,7 @@ a.d-hero__money:hover{ text-shadow:0 0 24px rgba(79,203,133,.35); }
 
 /* ---------- 5. TARJETA ------------------------------------- */
 .d-card{ background:var(--d-surface); border:1px solid var(--d-line); border-radius:var(--r-md); box-shadow:inset 0 1px 0 var(--d-rim);
-  overflow:hidden; display:grid; grid-template-rows:auto auto auto; contain:content; }
+  overflow:hidden; display:grid; grid-template-rows:auto auto auto; align-content:start; contain:content; }
 .d-card--link{ transition:border-color 160ms ease-out; } .d-card--link:hover{ border-color:rgba(79,203,133,.45); }
 .d-card__head{ display:flex; align-items:center; gap:var(--s-3); padding:var(--s-4) var(--s-4) var(--s-3); border-bottom:1px solid var(--d-line-soft); }
 .d-card__title{ font-size:var(--fs-h2); font-weight:600; letter-spacing:-.01em; }
@@ -537,3 +540,52 @@ tr.d-new > td{ animation:d-flash-td var(--t-flash) ease-out both; }
   .d-main{ padding:0 } .d-card,.d-stats{ box-shadow:none; border:1px solid #CFD2CB; break-inside:avoid }
   .dash *, .dash *::before, .dash *::after{ animation:none !important; }
 }
+
+/* ---------- 17. TEMA CLARO: la paleta de siempre ------------ */
+html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
+.dash.dash--claro{
+  --d-canvas:#F3F4F1; --d-surface:#FFFFFF; --d-surface-2:#FAFAF8; --d-surface-3:#EFF1EC; --d-rail:#0A4526;
+  --d-line:#E3E5DF; --d-line-soft:#EDEFE9; --d-line-ctl:#767676; --d-rim:transparent;
+  --d-ink:#1D1D1B; --d-ink-2:#45463F; --d-muted:#5C5C5C;
+  --d-green-lit:#0E5A33; --d-green-bar:#0E7C41; --d-green-acc:#0E7C41; --d-green-wash:#EAF4EE; --d-green-soft:#C9DED2;
+  --d-yellow:#7A5A00; --d-yellow-wash:#FFF4CF; --d-on-yellow:#1D1D1B;
+  --d-down:#B4472F; --d-down-wash:#F7EAE6; --d-broken:#9C1C1C; --d-broken-wash:#FCE4E4;
+  --sh-2:0 8px 24px rgba(20,22,18,.14); --ring-focus:0 0 0 2px #F5C518, 0 0 0 4px #1D1D1B;
+  color-scheme:light; scrollbar-color:auto;
+  background:radial-gradient(900px 520px at 12% -6%, rgba(14,124,65,.08), transparent 60%) no-repeat, var(--d-canvas);
+}
+.dash.dash--claro .d-hero__money, .dash.dash--claro .d-hero--tight h1{ color:#1D1D1B; }
+.dash.dash--claro .d-rail__mark span{ color:#F5C518; }
+.dash.dash--claro .d-rail nav a[aria-current="page"]{ border-bottom-color:#F5C518; }
+.dash.dash--claro .d-tabbar a[aria-current="page"]::before, .dash.dash--claro .d-tabbar a[data-nuevos]::after{ background:#0E5A33; }
+.dash.dash--claro .d-col__tapa{ fill:#F5C518; }
+.dash.dash--claro .d-fleetmap__lienzo.is-invertido .leaflet-tile-pane{ filter:none; }
+.dash.dash--claro .d-stack .wait{ background:#F5C518; }
+.dash.dash--claro .d-stat__value.es-ahora{ color:#7A5A00; }
+.dash.dash--claro .d-ticket__min.es-espera{ color:#7A5A00; }
+.dash.dash--claro .d-filterpill{ background:#1D1D1B; }
+.dash.dash--claro .d-tabbar, .dash.dash--claro .d-actionbar{ background:#fff; }
+.dash.dash--claro .d-toast{ background:#fff; border-color:#E3E5DF; }
+.dash.dash--claro .d-sheet, .dash.dash--claro .d-dialog{ background:#fff; border-color:#E3E5DF; }
+.dash.dash--claro .d-flotante, .dash.dash--claro .d-mapa-btn{ background:#fff; border-color:#E3E5DF; color:#1D1D1B; }
+.dash.dash--claro .d-rider__disc, .dash.dash--claro .d-sede{ background:#fff; }
+.dash.dash--claro .d-rider__min{ background:#fff; }
+.dash.dash--claro .leaflet-tooltip.d-tip{ background:#fff; color:#1D1D1B; border-color:#E3E5DF; }
+.dash.dash--claro .leaflet-bar a{ background:#fff; color:#1D1D1B; }
+.dash.dash--claro .leaflet-control-attribution{ background:rgba(255,255,255,.8); color:#5C5C5C; }
+.dash.dash--claro .d-casa i{ background:#fff; }
+.dash.dash--claro .d-demo{ color:#7A5A00; background:#FFF4CF; }
+.dash.dash--claro ::selection{ background:#C9DED2; color:#1D1D1B; }
+
+/* conmutadores del riel */
+.d-conm{ display:inline-flex; align-items:center; gap:2px; padding:2px; border-radius:var(--r-pill); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); }
+.d-conm button{ min-height:30px; padding:0 10px; border:0; border-radius:var(--r-pill); background:transparent; color:rgba(242,244,240,.75); font:600 11.5px var(--ff); letter-spacing:.04em; cursor:pointer; transition:background-color var(--t-tap), color var(--t-tap); }
+.d-conm button[aria-pressed="true"]{ background:#FFF; color:#0A4526; }
+.d-conm button:hover{ color:#FFF; }
+.d-conm--datos button[aria-pressed="true"].vivo{ background:#F5C518; color:#0B0F0C; }
+.d-rail__conms{ display:flex; gap:8px; align-items:center; }
+@media (max-width:899px){ .d-rail__conms{ display:none; } .d-sheet .d-conms{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:6px 0 14px; } .d-sheet .d-conm{ justify-content:center; background:var(--d-surface-3); border-color:var(--d-line-ctl); } .d-sheet .d-conm button{ color:var(--d-ink-2); flex:1; } .d-sheet .d-conm button[aria-pressed="true"]{ background:var(--d-green-acc); color:#FFF; } }
+@media (min-width:900px){ .d-sheet .d-conms{ display:none; } }
+.d-vivo-empty{ display:grid; gap:10px; justify-items:start; padding:20px; border:1px dashed var(--d-line-ctl); border-radius:var(--r-md); }
+.d-vivo-empty h3{ font-size:17px; font-weight:600; }
+.d-vivo-empty ol{ margin:0; padding-left:20px; color:var(--d-ink-2); line-height:1.6; }

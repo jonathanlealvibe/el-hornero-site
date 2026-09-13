@@ -109,7 +109,7 @@ export function sembrar({ dias = 14 } = {}) {
     for (let i = 0; i < nPedidos; i++) {
       const persona = pick(gente)
       const local = pick(PILOTO)
-      const modalidad = rnd() > 0.28 ? 'domicilio' : 'retiro'
+      let modalidad = rnd() > 0.28 ? 'domicilio' : 'retiro'
       const canal = rnd() > 0.45 ? 'llamada' : rnd() > 0.4 ? 'web' : 'whatsapp'
 
       // Hora realista: almuerzo y sobre todo cena. Los pedidos de HOY no pueden
@@ -147,9 +147,11 @@ export function sembrar({ dias = 14 } = {}) {
       const esHoy = d === 0
       let estado = 'entregado'
       if (esHoy && i >= nPedidos - 8) {
-        estado = modalidad === 'domicilio'
-          ? pick(['camino', 'camino', 'camino', 'horno', 'recibido'])
-          : pick(['horno', 'recibido'])
+        // Tres motos en la calle siempre: el mapa de la demo tiene que mostrar algo.
+        if (i < nPedidos - 5) { modalidad = 'domicilio'; estado = 'camino' }
+        else estado = modalidad === 'domicilio' ? pick(['camino', 'horno', 'recibido']) : pick(['horno', 'recibido'])
+        // Lo que está en marcha entró hace poco: un ticket de 150 minutos no existe.
+        t.setTime(Date.now() - entre(estado === 'recibido' ? 1 : estado === 'horno' ? 6 : 12, estado === 'camino' ? 44 : 22) * 60000)
       }
 
       const pedido = S.registrarPedido({
@@ -163,7 +165,7 @@ export function sembrar({ dias = 14 } = {}) {
         creado_en: t.getTime(),
         minutos_entrega: estado === 'entregado' ? entre(22, 48) : null,
         repartidor: modalidad === 'domicilio' ? pick(REPARTIDORES) : null,
-        salio_en: estado === 'camino' ? Date.now() - entre(4, 41) * 60000 : null,
+        salio_en: estado === 'camino' ? Math.min(Date.now() - 3 * 60000, t.getTime() + entre(6, 10) * 60000) : null,
         rider: null,   // se calcula abajo, sobre la ruta local -> casa
         items,
       })

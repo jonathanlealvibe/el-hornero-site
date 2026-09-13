@@ -3,6 +3,7 @@ import * as S from './store.js'
 import { estadoTexto } from './textos.js'
 import { hhmm, money } from './format.js'
 import { marcar } from './motion.js'
+import { T } from './i18n.js'
 
 /* ---------------------------------------------------------------- toast */
 
@@ -32,7 +33,7 @@ export function ToastHost({ children }) {
         <div className={'d-toast' + (t.saliendo ? ' saliendo' : '')} role="status" style={{ '--vida': `${t.vida}ms` }}
           onMouseEnter={pausa} onMouseLeave={sigue} onFocus={pausa} onBlur={sigue}>
           <span>{t.texto}</span>
-          {t.deshacer && <button type="button" onClick={() => { t.deshacer(); clearTimeout(timer.current); cerrar() }}>Deshacer</button>}
+          {t.deshacer && <button type="button" onClick={() => { t.deshacer(); clearTimeout(timer.current); cerrar() }}>{T('Deshacer', 'Undo')}</button>}
           <i className="d-toast__barra" key={t.id} aria-hidden />
         </div>
       )}
@@ -60,13 +61,13 @@ export function Dialogo({ titulo, children, onCerrar }) {
 
 /* -------------------------------------------------------- estado del pedido */
 
-const MOTIVOS = ['El cliente se arrepintió', 'No se pudo entregar', 'Se tomó mal el pedido', 'Otro motivo']
+const MOTIVOS = () => [T('El cliente se arrepintió', 'The customer changed their mind'), T('No se pudo entregar', 'Could not be delivered'), T('Se tomó mal el pedido', 'The order was taken wrong'), T('Otro motivo', 'Another reason')]
 
 // La escalera: un toque avanza un paso, con Deshacer 5 s. Cancelar pide motivo.
 export function EstadoPedido({ pedido, compacto = false }) {
   const avisar = useToast()
   const [dialogo, setDialogo] = useState(false)
-  const [motivo, setMotivo] = useState(MOTIVOS[0])
+  const [motivo, setMotivo] = useState(MOTIVOS()[0])
   const pasos = S.pasosDe(pedido)
   const idx = pasos.indexOf(pedido.estado)
   const cancelado = pedido.estado === 'cancelado'
@@ -77,17 +78,17 @@ export function EstadoPedido({ pedido, compacto = false }) {
     const antes = pedido.estado
     const ok = S.cambiarEstado(pedido.pedido_id, estado)
     if (!ok) return
-    if (aviso) avisar(`${pedido.pedido_id} pasó a ${estadoTexto(estado, pedido.modalidad)}`, { deshacer: () => S.cambiarEstado(pedido.pedido_id, antes, { forzar: true }) })
+    if (aviso) avisar(T(`${pedido.pedido_id} pasó a ${estadoTexto(estado, pedido.modalidad)}`, `${pedido.pedido_id} moved to ${estadoTexto(estado, pedido.modalidad)}`), { deshacer: () => S.cambiarEstado(pedido.pedido_id, antes, { forzar: true }) })
   }
   const cancelar = () => {
     S.cancelarPedido(pedido.pedido_id, motivo)
     setDialogo(false)
-    avisar(`${pedido.pedido_id} quedó cancelado`)
+    avisar(T(`${pedido.pedido_id} quedó cancelado`, `${pedido.pedido_id} was cancelled`))
   }
 
   if (compacto) {
     return (
-      <span className="d-pasos" aria-label={`Estado: ${estadoTexto(pedido.estado, pedido.modalidad)}`}>
+      <span className="d-pasos" aria-label={`${T('Estado', 'Status')}: ${estadoTexto(pedido.estado, pedido.modalidad)}`}>
         {pasos.map((p, i) => (
           <button key={p} type="button" title={estadoTexto(p, pedido.modalidad)}
             className={i < idx ? 'hecho' : i === idx ? 'actual' : ''}
@@ -114,26 +115,26 @@ export function EstadoPedido({ pedido, compacto = false }) {
       })}
       {!cancelado && (
         <div className="d-escalera__mas">
-          {anterior && <button type="button" onClick={() => ir(anterior)}>Devolver un paso</button>}
-          <button type="button" className="peligro" onClick={() => setDialogo(true)}>Cancelar el pedido</button>
+          {anterior && <button type="button" onClick={() => ir(anterior)}>{T('Devolver un paso', 'Go back one step')}</button>}
+          <button type="button" className="peligro" onClick={() => setDialogo(true)}>{T('Cancelar el pedido', 'Cancel the order')}</button>
         </div>
       )}
-      {cancelado && <p className="d-quiet" style={{ fontSize: 13 }}>Cancelado{pedido.motivo_cancelacion ? `: ${pedido.motivo_cancelacion}` : ''}.</p>}
+      {cancelado && <p className="d-quiet" style={{ fontSize: 13 }}>{T('Cancelado', 'Cancelled')}{pedido.motivo_cancelacion ? `: ${pedido.motivo_cancelacion}` : ''}.</p>}
       {dialogo && (
-        <Dialogo titulo={`¿Cancelar el pedido ${pedido.pedido_id}?`} onCerrar={() => setDialogo(false)}>
+        <Dialogo titulo={T(`¿Cancelar el pedido ${pedido.pedido_id}?`, `Cancel order ${pedido.pedido_id}?`)} onCerrar={() => setDialogo(false)}>
           <div className="d-radios">
-            {MOTIVOS.map((m) => (
+            {MOTIVOS().map((m) => (
               <label key={m}><input type="radio" name="motivo" checked={motivo === m} onChange={() => setMotivo(m)} /> {m}</label>
             ))}
           </div>
-          <p>Se restan {money(pedido.total_cobrado)} de lo cobrado hoy y el cliente deja de verlo en su link.</p>
+          <p>{T(`Se restan ${money(pedido.total_cobrado)} de lo cobrado hoy y el cliente deja de verlo en su link.`, `${money(pedido.total_cobrado)} is taken off today's takings and the customer stops seeing it in their link.`)}</p>
           <div className="d-dialog__acts">
-            <button type="button" className="d-btn" onClick={() => setDialogo(false)}>No, dejarlo como está</button>
-            <button type="button" className="d-btn d-btn--danger" onClick={cancelar}>Sí, cancelar</button>
+            <button type="button" className="d-btn" onClick={() => setDialogo(false)}>{T('No, dejarlo como está', 'No, leave it')}</button>
+            <button type="button" className="d-btn d-btn--danger" onClick={cancelar}>{T('Sí, cancelar', 'Yes, cancel')}</button>
           </div>
         </Dialogo>
       )}
-      <span className="d-quiet" style={{ fontSize: 12 }}>{siguiente ? 'Un toque avanza al siguiente paso. Se puede deshacer 5 segundos.' : ''}</span>
+      <span className="d-quiet" style={{ fontSize: 12 }}>{siguiente ? T('Un toque avanza al siguiente paso. Se puede deshacer 5 segundos.', 'One tap moves to the next step. Undo within 5 seconds.') : ''}</span>
     </div>
   )
 }
@@ -141,7 +142,7 @@ export function EstadoPedido({ pedido, compacto = false }) {
 /* ----------------------------------------------------------- campo editable */
 
 // El texto no se mueve un píxel al editar: mismo recuadro, Enter o salir guarda, Esc cancela.
-export function CampoEditable({ etiqueta, valor, vacio = 'Sin dato', ayuda, onGuardar, normalizar, validar, tipo = 'text' }) {
+export function CampoEditable({ etiqueta, valor, vacio = T('Sin dato', 'No data'), ayuda, onGuardar, normalizar, validar, tipo = 'text' }) {
   const [edit, setEdit] = useState(false)
   const [v, setV] = useState(valor || '')
   const [err, setErr] = useState(null)
@@ -172,7 +173,7 @@ export function CampoEditable({ etiqueta, valor, vacio = 'Sin dato', ayuda, onGu
       {edit
         ? <input ref={input} type={tipo} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={teclas} onBlur={guardar} aria-label={etiqueta} />
         : (
-          <button type="button" className={'d-campo__val' + (valor ? '' : ' vacio')} onClick={() => setEdit(true)} aria-label={`Editar ${etiqueta}`}>
+          <button type="button" className={'d-campo__val' + (valor ? '' : ' vacio')} onClick={() => setEdit(true)} aria-label={`${T('Editar', 'Edit')} ${etiqueta}`}>
             <span>{valor || vacio}</span><span className="lapiz" aria-hidden>✎</span>
           </button>
         )}

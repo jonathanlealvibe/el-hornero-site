@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LOCALES } from '../locales.js'
 import { reduce, animar } from './motion.js'
+import { T } from './i18n.js'
 
 // Mapa de TODAS las entregas en curso a la vez, en oscuro. Es distinto del mapa
 // del cliente (src/pages/Map.jsx), que sigue un solo pedido y se queda claro.
@@ -91,7 +92,7 @@ export default function FleetMap({
         keyboard: !compacto, tap: !compacto,
       }).setView([-0.19, -78.48], 12)
       if (!compacto) L.control.attribution({ prefix: false, position: 'bottomleft' }).addTo(m)
-      if (!compacto && !esMovil()) L.control.zoom({ position: 'bottomright', zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(m)
+      if (!compacto && !esMovil()) L.control.zoom({ position: 'bottomright', zoomInTitle: T('Acercar', 'Zoom in'), zoomOutTitle: T('Alejar', 'Zoom out') }).addTo(m)
       const tiles = L.tileLayer(BASE.url, BASE.opts).addTo(m)
       tiles.on('tileerror', () => { errores++; if (errores >= 4 && !cargado) setRoto(true) })
       tiles.on('load', () => { cargado = true })
@@ -175,7 +176,7 @@ export default function FleetMap({
   //    reinicia y la flecha gira en vez de saltar.
   useEffect(() => {
     if (!listo || !map.current || !window.L) return
-    const L = window.L, m = map.current, C = capas.current, T = tonos.current
+    const L = window.L, m = map.current, C = capas.current, TN = tonos.current
     const vivos = new Set()
     const ini = iniciales(entregas)
     const ahora = Date.now()
@@ -211,7 +212,7 @@ export default function FleetMap({
       vivos.add(e.pedido_id)
       const sel = seleccion === e.pedido_id
       const dim = !!seleccion && !sel
-      const tono = sel ? T.sel : e.atrasado ? T.tarde : T.ok
+      const tono = sel ? TN.sel : e.atrasado ? TN.tarde : TN.ok
       const pr = [e.rider.lat, e.rider.lng], pd = [e.destino.lat, e.destino.lng]
 
       if (!C.motos[e.pedido_id]) {
@@ -287,12 +288,12 @@ export default function FleetMap({
         nodo.querySelector('.d-rider__disc').textContent = ini[e.pedido_id]
         const min = nodo.querySelector('.d-rider__min')
         min.hidden = e.minutos_fuera == null; min.textContent = e.minutos_fuera ?? ''
-        nodo.setAttribute('aria-label', `${e.repartidor || 'Motorizado'}, ${e.minutos_fuera ?? '?'} minutos fuera${e.atrasado ? ', pasada de 35 minutos' : ''}, de ${LOCALES.find((l) => l.id === e.local_id)?.nombre || ''} a ${e.destino.sector || ''}`)
+        nodo.setAttribute('aria-label', T(`${e.repartidor || 'Motorizado'}, ${e.minutos_fuera ?? '?'} minutos fuera${e.atrasado ? ', pasada de 35 minutos' : ''}, de ${LOCALES.find((l) => l.id === e.local_id)?.nombre || ''} a ${e.destino.sector || ''}`, `${e.repartidor || 'Rider'}, ${e.minutos_fuera ?? '?'} minutes out${e.atrasado ? ', past 35 minutes' : ''}, from ${LOCALES.find((l) => l.id === e.local_id)?.nombre || ''} to ${e.destino.sector || ''}`))
       }
       const tip = `${e.repartidor || 'Motorizado'} · ${e.pedido_id}${e.minutos_fuera != null ? ` · ${e.minutos_fuera} min` : ''} · ${LOCALES.find((l) => l.id === e.local_id)?.nombre || ''} → ${e.destino.sector || ''}`
       if (C.motos[e.pedido_id].getTooltip()) C.motos[e.pedido_id].setTooltipContent(tip)
       else if (!compacto) C.motos[e.pedido_id].bindTooltip(tip, { className: 'd-tip', direction: 'top', offset: [0, -26], opacity: 1 })
-      const tipCasa = `${e.persona ? `${e.persona.nombre} ${e.persona.apellido}` : 'Cliente'} · ${e.destino.sector || ''}${e.destino.calle ? ` · ${e.destino.calle}` : ''}`
+      const tipCasa = `${e.persona ? `${e.persona.nombre} ${e.persona.apellido}` : T('Cliente', 'Customer')} · ${e.destino.sector || ''}${e.destino.calle ? ` · ${e.destino.calle}` : ''}`
       if (C.casas[e.pedido_id].getTooltip()) C.casas[e.pedido_id].setTooltipContent(tipCasa)
       else if (!compacto) C.casas[e.pedido_id].bindTooltip(tipCasa, { className: 'd-tip', direction: 'top', offset: [0, -14], opacity: 1 })
       C.motos[e.pedido_id].setZIndexOffset(sel ? 1000 : hover === e.pedido_id ? 500 : 100)
@@ -359,22 +360,22 @@ export default function FleetMap({
   const nAtrasadas = entregas.filter((e) => e.atrasado).length
   return (
     <div ref={wrap} className={'d-fleetmap' + (compacto ? ' d-fleetmap--compacto' : '')} style={height ? { '--m-h': `${height}px` } : undefined}
-      role="region" aria-label={`Mapa con ${entregas.length} motos en la calle${nAtrasadas ? `; ${nAtrasadas} pasada${nAtrasadas > 1 ? 's' : ''} de 35 minutos` : ''}`}>
+      role="region" aria-label={T(`Mapa con ${entregas.length} motos en la calle${nAtrasadas ? `; ${nAtrasadas} pasada${nAtrasadas > 1 ? 's' : ''} de 35 minutos` : ''}`, `Map with ${entregas.length} riders out${nAtrasadas ? `; ${nAtrasadas} past 35 minutes` : ''}`)}>
       <div ref={el} className="d-fleetmap__lienzo" />
       {!compacto && movido && (
-        <button type="button" className="d-mapa-btn" onClick={recentrar}>Recentrar</button>
+        <button type="button" className="d-mapa-btn" onClick={recentrar}>{T('Recentrar', 'Recenter')}</button>
       )}
       {huella.length > 0 && entregas.length === 0 && (
-        <p className="d-mapa-leyenda"><i /> Entregas de hoy · {huella.length}</p>
+        <p className="d-mapa-leyenda"><i /> {T('Entregas de hoy', "Today's deliveries")} · {huella.length}</p>
       )}
       {roto && (
         <div className="d-fleetmap__aviso" role="alert">
-          <span>El mapa no cargó. La lista de abajo tiene las mismas entregas.</span>
-          <button type="button" className="d-btn d-btn--sm" onClick={reintentar}>Reintentar el mapa</button>
+          <span>{T('El mapa no cargó. La lista de abajo tiene las mismas entregas.', 'The map did not load. The list below has the same deliveries.')}</span>
+          <button type="button" className="d-btn d-btn--sm" onClick={reintentar}>{T('Reintentar el mapa', 'Retry the map')}</button>
         </div>
       )}
       {compacto && (
-        <button type="button" className="d-fleetmap__tapa" onClick={onClickCompacto} aria-label="Abrir el mapa de motos" />
+        <button type="button" className="d-fleetmap__tapa" onClick={onClickCompacto} aria-label={T('Abrir el mapa de motos', 'Open the riders map')} />
       )}
       {children}
     </div>

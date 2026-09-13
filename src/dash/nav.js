@@ -2,13 +2,14 @@
 // enlace que se puede copiar, abrir en otra pestaña y compartir por WhatsApp.
 import { useEffect, useState } from 'react'
 import { dayKey } from './format.js'
+import { T } from './i18n.js'
 
 export const PERIODOS = [
-  { key: 'hoy', label: 'Hoy' },
-  { key: 'ayer', label: 'Ayer' },
-  { key: '7d', label: 'Últimos 7 días' },
-  { key: 'mes', label: 'Este mes' },
-  { key: 'dia', label: 'Un día' },
+  { key: 'hoy', get label() { return T('Hoy', 'Today') } },
+  { key: 'ayer', get label() { return T('Ayer', 'Yesterday') } },
+  { key: '7d', get label() { return T('Últimos 7 días', 'Last 7 days') } },
+  { key: 'mes', get label() { return T('Este mes', 'This month') } },
+  { key: 'dia', get label() { return T('Un día', 'One day') } },
 ]
 
 export function rangoDe(periodo, dia) {
@@ -22,7 +23,8 @@ export function rangoDe(periodo, dia) {
 }
 
 export const PERIODO_FRASE = {
-  hoy: 'hoy', ayer: 'ayer', '7d': 'en los últimos 7 días', mes: 'este mes', dia: 'ese día',
+  get hoy() { return T('hoy', 'today') }, get ayer() { return T('ayer', 'yesterday') },
+  get '7d'() { return T('en los últimos 7 días', 'in the last 7 days') }, get mes() { return T('este mes', 'this month') }, get dia() { return T('ese día', 'that day') },
 }
 
 // hrefPanel('pedidos', { estado:'camino' }, filtrosActuales) → '#/panel/pedidos?estado=camino&local=x&periodo=hoy'

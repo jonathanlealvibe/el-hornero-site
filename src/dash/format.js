@@ -1,6 +1,7 @@
 // Reglas de formato del tablero. Ninguna pantalla formatea por su cuenta.
 // Ecuador continental es UTC-5 y no mueve el reloj.
 
+import { locale } from './i18n.js'
 export const TZ = 'America/Guayaquil'
 
 // El menú impreso y el recibo escriben $14.50. Si el tablero dijera $14,50
@@ -16,15 +17,15 @@ export const dayKey = (d = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d)
 
 export const hhmm = (d) =>
-  new Intl.DateTimeFormat('es-EC', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  new Intl.DateTimeFormat(locale(), { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     .format(typeof d === 'number' ? new Date(d) : d)
 
 export const fecha = (d) =>
-  new Intl.DateTimeFormat('es-EC', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Intl.DateTimeFormat(locale(), { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' })
     .format(typeof d === 'number' ? new Date(d) : d)
 
 export const fechaLarga = (d) =>
-  new Intl.DateTimeFormat('es-EC', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' })
+  new Intl.DateTimeFormat(locale(), { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' })
     .format(typeof d === 'number' ? new Date(d) : d)
 
 export const dur = (s) => (s < 60 ? `${Math.round(s)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`)
@@ -46,7 +47,7 @@ export const UMBRALES = {
 // existe: mañana cae a 64 % porque una persona colgó.
 export function tasa(parte, total) {
   if (!total) return { texto: SIN_DATO, exacto: false }
-  if (total < UMBRALES.porcentaje) return { texto: `${parte} de ${total}`, exacto: false }
+  if (total < UMBRALES.porcentaje) return { texto: `${parte} ${locale() === 'en-US' ? 'of' : 'de'} ${total}`, exacto: false }
   return { texto: `${Math.round((parte / total) * 100)} %`, exacto: true }
 }
 
