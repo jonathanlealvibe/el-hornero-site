@@ -213,15 +213,29 @@ export const LOCAL_TEL = '2002000011'
 // writing BEFORE the link, amount and order code before the link, and the link alone on the
 // last line so WhatsApp does not glue it to a word.
 const m2 = (n) => '$' + Number(n || 0).toFixed(2)
+const nombre = (o) => (o.cliente?.nombre ? ' ' + o.cliente.nombre : '')
+// WhatsApp entiende *negrita*. El link va SIEMPRE solo en la última línea: pegado a
+// una frase, WhatsApp no dibuja la tarjeta de vista previa.
+const lista = (o) => (o.items || [])
+  .map((i) => `• ${i.cantidad > 1 ? i.cantidad + ' × ' : ''}${i.nombre}`)
+  .join('\n')
+
 export const WA = {
   pago: (o, url) =>
-    `Le escribe Camila de El Hornero 🍕\n` +
-    `Su pedido ${o.id} quedó reservado. Total a pagar: ${m2(o.total)}.\n` +
-    `Toque aquí para pagar con tarjeta y lo mandamos al horno enseguida:\n${url}`,
+    `🍕 *El Hornero*\n\n` +
+    `Hola${nombre(o)}, le escribe Camila.\n` +
+    `Su pedido *${o.id}* está reservado.\n\n` +
+    `${lista(o)}\n\n` +
+    `*Total: ${m2(o.total)}*  (IVA incluido)\n\n` +
+    `Toque aquí para pagar con tarjeta y lo mandamos al horno 👇\n` +
+    `${url}`,
   seguimiento: (o, url) =>
-    `Le escribe Camila de El Hornero 🛵\n` +
-    `Su pedido ${o.id} ya salió del local y va en camino.\n` +
-    `Toque aquí para ver a su motorizado en el mapa en vivo:\n${url}`,
+    `🛵 *El Hornero*\n\n` +
+    `¡Su pedido ya salió${nombre(o)}!\n` +
+    `*${o.id}* va en camino` +
+    (o.direccion?.sector ? ` a ${o.direccion.sector}` : '') + `.\n\n` +
+    `Siga a su motorizado en el mapa en vivo 👇\n` +
+    `${url}`,
 }
 
 // Demo helpers (demo mode only)
