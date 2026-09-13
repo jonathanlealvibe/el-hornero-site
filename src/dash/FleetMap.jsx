@@ -346,7 +346,9 @@ export default function FleetMap({
         for (const h of huella) if (h.lat != null) pts.push([h.lat, h.lng])
         for (const id of Object.keys(C.sedes)) pts.push(C.sedes[id].getLatLng())
       }
-      if (!movido || seleccion) encuadrar(pts, { maxZoom: seleccion ? 15 : 13, anim: !primera })
+      // La tira compacta admite un paso más de zoom: sus diez motos viven en el
+      // centro de Quito y a 13 se leerían como un solo pin con un número.
+      if (!movido || seleccion) encuadrar(pts, { maxZoom: seleccion ? 15 : compacto ? 14 : 13, anim: !primera })
     }
   }, [listo, entregas, seleccion, hover, huella, sedesVisibles, compacto])   // eslint-disable-line react-hooks/exhaustive-deps
 

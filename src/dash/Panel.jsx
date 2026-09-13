@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRoute, go } from '../router.js'
 import * as S from './store.js'
 import { sembrar, haySemilla } from './seed.js'
-import { hhmm, fechaLarga } from './format.js'
+import { hhmm, fechaLarga, dayKey } from './format.js'
 import { PERIODOS, rangoDe, usarFiltros, irCon, hrefPanel } from './nav.js'
 import { useDormido } from './motion.js'
 import { T, getLang, setLang, getTema, setTema, getDatos, setDatos } from './i18n.js'
@@ -42,10 +42,15 @@ export default function Panel() {
   const previa = useRef(wrapKey)
   const nuevos = useRef(0)
 
-  // Demostración: se siembra una vez. En vivo: se traen los pedidos de la tienda.
+  // Demostración: se siembra una vez, y de nuevo si la siembra no es de hoy o
+  // tiene más de 3 horas (mañana en la mañana nadie quiere ver tickets de 900
+  // minutos). En vivo: se traen los pedidos de la tienda.
   useEffect(() => {
-    if (datos === 'demo') { if (!haySemilla()) sembrar({ dias: 14 }) }
-    else importarPedidosDelSitio()
+    if (datos === 'demo') {
+      const s = S.estado().sembrado
+      const vieja = !haySemilla() || dayKey(new Date(s)) !== dayKey() || Date.now() - s > 3 * 3600000
+      if (vieja) sembrar({ dias: 14 })
+    } else importarPedidosDelSitio()
     setListo(true)
   }, [datos])
 
@@ -149,10 +154,13 @@ export default function Panel() {
           <div className="d-rail__user">
             <div className="d-rail__conms"><Conmutadores /></div>
             <span className="d-demo">{datos === 'demo' ? T('Datos inventados', 'Made-up data') : T('Pedidos reales de la tienda', 'Real store orders')}</span>
-            <span className="d-vivo" data-estado={estadoVivo}>
-              <i aria-hidden />
-              <span aria-hidden>{estadoVivo === 'fresco' ? T('En vivo', 'Live') : T('Sin actualizar desde las', 'Not updated since')} · {hhmm(ultimo)}</span>
-            </span>
+            <div className="d-rail__vivo">
+              <span className="d-vivo" data-estado={estadoVivo}>
+                <i aria-hidden />
+                <span aria-hidden>{estadoVivo === 'fresco' ? T('En vivo', 'Live') : T('Sin actualizar desde las', 'Not updated since')} · {hhmm(ultimo)}</span>
+              </span>
+              <span className="d-credit">Powered by <b>Concierge</b></span>
+            </div>
           </div>
         </header>
 
@@ -187,6 +195,7 @@ export default function Panel() {
 
         <main className="d-main" id="panel-main">
           <div className="d-wrap" key={wrapKey + idioma + datos} data-nav={nav}>{contenido()}</div>
+          <p className="d-credit d-credit--pie">Powered by <b>Concierge</b></p>
         </main>
         <div role="status" aria-live="polite" className="d-sr" id="panel-status" />
 

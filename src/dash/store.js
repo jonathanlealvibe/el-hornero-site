@@ -17,7 +17,7 @@ import { dayKey } from './format.js'
 import { getDatos } from './i18n.js'
 
 // Dos cajones separados: la demostración (inventada) y lo vivo (la tienda).
-const LS_DE = (m) => (m === 'vivo' ? 'elhornero.panel.vivo.v1' : 'elhornero.panel.v10')
+const LS_DE = (m) => (m === 'vivo' ? 'elhornero.panel.vivo.v1' : 'elhornero.panel.v11')
 let modo = getDatos()
 export const getModo = () => modo
 export function setModo(m) { modo = m === 'vivo' ? 'vivo' : 'demo'; db = null; emitir() }
@@ -632,6 +632,101 @@ export function serieDiaria(n = 14, local) {
     cuenta[p.dia]++
   }
   return { dias, valores: dias.map((x) => suma[x]), pedidos: dias.map((x) => cuenta[x]) }
+}
+
+// La misma serie partida por dónde entró el pedido (teléfono, página, WhatsApp),
+// para las columnas apiladas. Los totales coinciden con serieDiaria.
+export const CANALES = ['llamada', 'web', 'whatsapp']
+export function serieDiariaPorCanal(n = 14, local) {
+  const d = cargar()
+  const dias = []
+  const hoy = new Date()
+  for (let i = n - 1; i >= 0; i--) dias.push(dayKey(new Date(hoy.getTime() - i * 86400000)))
+  const idx = Object.fromEntries(dias.map((x, i) => [x, i]))
+  const series = Object.fromEntries(CANALES.map((c) => [c, dias.map(() => 0)]))
+  const cuentas = Object.fromEntries(CANALES.map((c) => [c, dias.map(() => 0)]))
+  const valores = dias.map(() => 0), pedidos = dias.map(() => 0)
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado') continue
+    if (local && p.local_id !== local) continue
+    const i = idx[p.dia]
+    if (i === undefined) continue
+    const c = CANALES.includes(p.canal) ? p.canal : 'web'
+    series[c][i] += p.total_cobrado; cuentas[c][i]++
+    valores[i] += p.total_cobrado; pedidos[i]++
+  }
+  return { dias, canales: CANALES, series, cuentas, valores, pedidos }
+}
+
+// Las cifras de la tira de arriba, día por día, en una sola pasada: pedidos,
+// ticket, entregas a tiempo, llamadas y minutos de entrega de los últimos n
+// días, más la base del mismo día de la semana pasada hasta la hora de hoy.
+export function seriesKPI(n = 14, local) {
+  const d = cargar()
+  const hoy = new Date()
+  const dias = []
+  for (let i = n - 1; i >= 0; i--) dias.push(dayKey(new Date(hoy.getTime() - i * 86400000)))
+  const idx = Object.fromEntries(dias.map((x, i) => [x, i]))
+  const z = () => dias.map(() => 0)
+  const pedidos = z(), dinero = z(), entregadas = z(), aTiempo = z(), minutos = z(), llamadas = z()
+  const corte = corteDeHoy(local)
+  const baseK = dias[n - 8] || null           // el mismo día de la semana pasada
+  let llamadasBase = 0
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado') continue
+    if (local && p.local_id !== local) continue
+    const i = idx[p.dia]
+    if (i === undefined) continue
+    pedidos[i]++; dinero[i] += p.total_cobrado
+    if (p.estado === 'entregado' && p.modalidad === 'domicilio' && p.minutos_entrega != null) {
+      entregadas[i]++; minutos[i] += p.minutos_entrega
+      if (p.minutos_entrega <= 35) aTiempo[i]++
+    }
+  }
+  for (const c of Object.values(d.conversaciones)) {
+    if (local && c.local_id !== local) continue
+    const i = idx[c.dia]
+    if (i === undefined) continue
+    llamadas[i]++
+    if (c.dia === baseK && minutoDe(c.inicio) <= corte) llamadasBase++
+  }
+  return {
+    dias, pedidos, entregadas, aTiempo, llamadas,
+    ticket: dias.map((_, i) => (pedidos[i] ? dinero[i] / pedidos[i] : null)),
+    aTiempoParte: dias.map((_, i) => (entregadas[i] ? aTiempo[i] / entregadas[i] : null)),
+    minutos: dias.map((_, i) => (entregadas[i] ? minutos[i] / entregadas[i] : null)),
+    base: { dia: baseK, llamadas: llamadasBase, i: n - 8 },
+  }
+}
+
+// Cuándo se vende: promedio de lo cobrado por (día de la semana, hora) en los
+// últimos n días, de 11 a 21. Hoy solo cuenta hasta la hora que ya pasó, para
+// no diluir la tarde con ceros que todavía no son ceros.
+export function matrizHoraDia(n = 14, local) {
+  const d = cargar()
+  const hoy = new Date()
+  const hoyK = dayKey(hoy)
+  const horaCorte = Math.floor(corteDeHoy(local) / 60)
+  const horas = []
+  for (let h = 11; h <= 21; h++) horas.push(h)
+  const suma = Array.from({ length: 7 }, () => horas.map(() => 0))
+  const den = Array.from({ length: 7 }, () => horas.map(() => 0))
+  const dias = []
+  for (let i = n - 1; i >= 0; i--) dias.push(dayKey(new Date(hoy.getTime() - i * 86400000)))
+  for (const k of dias) {
+    const dow = new Date(k + 'T12:00:00-05:00').getDay()
+    horas.forEach((h, j) => { if (k !== hoyK || h <= horaCorte) den[dow][j]++ })
+  }
+  const desde = dias[0]
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado' || p.dia < desde) continue
+    if (local && p.local_id !== local) continue
+    const j = new Date(p.creado_en).getHours() - 11
+    if (j < 0 || j >= horas.length) continue
+    suma[new Date(p.dia + 'T12:00:00-05:00').getDay()][j] += p.total_cobrado
+  }
+  const orden = [1, 2, 3, 4, 5, 6, 0]     // lunes primero
+  return { dow: orden, horas, valores: orden.map((k) => horas.map((_, j) => (den[k][j] ? suma[k][j] / den[k][j] : null))) }
 }
 
 // Dos bloques de 7 días, comparables solo sobre los locales que ya vendían en

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as S from './store.js'
 import FleetMap from './FleetMap.jsx'
 import { PorQueCambio, DondeSeVendeMas } from './graficos.jsx'
-import { Columnas, AreaLinea, Bullet, Dona, BarrasUmbral, ColumnasSimples } from './trazos.jsx'
-import { money, num, hhmm, fecha, fechaLarga, tasa, SIN_DATO, UMBRALES } from './format.js'
+import { AreaLinea, Bullet, Dona, BarrasUmbral, ColumnasSimples, ColumnasDobles, ColumnasApiladas, Chispa, Calor } from './trazos.jsx'
+import { money, money0, num, hhmm, fecha, fechaLarga, tasa, variacion, SIN_DATO, UMBRALES } from './format.js'
 import { hrefPanel, irCon, PERIODO_FRASE } from './nav.js'
 import { useVersion } from './useStore.js'
 import { useEntrada, useNuevos, usarCifra, marcar, useMovil } from './motion.js'
@@ -30,12 +30,20 @@ export const Card = ({ title, sub, tools, children, foot, span, i, className = '
 )
 
 // Cada cifra abre las filas que la suman. Con 0 no hay enlace: no hay nada que abrir.
-export const Stat = ({ label, value, foot, href, go, tono, ariaGo }) => {
+// `chispa` es la línea de los últimos días bajo la cifra; `delta` el chip
+// contra el mismo día de la semana pasada ({ dir:'up'|'down'|'flat', texto, title }).
+export const Stat = ({ label, value, foot, href, go, tono, ariaGo, chispa, delta }) => {
   const inner = (
     <>
       <span className="d-stat__label">{label}</span>
       <span className={'d-stat__value' + (tono ? ` ${tono}` : '')}>{value}</span>
-      {foot && <span className="d-stat__foot">{foot}</span>}
+      {chispa && <span className="d-stat__chispa">{chispa}</span>}
+      {(foot || delta) && (
+        <span className="d-stat__foot">
+          {delta && <span className={`d-delta d-delta--${delta.dir}`} title={delta.title}>{delta.texto}</span>}
+          {delta && foot ? ' ' : null}{foot}
+        </span>
+      )}
       {href && go && <span className="d-stat__go">{go} ›</span>}
       {href && <span className="d-stat__chev" aria-hidden>›</span>}
     </>
@@ -111,7 +119,11 @@ export function Hoy({ F, datos, onNuevos }) {
   const huella = useMemo(() => S.huellaDeHoy(local), [local, version])
   const enCurso = useMemo(() => S.pedidos({ ...rango, estado: 'en_curso' }).sort((a, b) => a.creado_en - b.creado_en), [rango, version])
   const conectados = useMemo(() => S.localesConectados(), [version])
-  const serie = useMemo(() => S.serieDiaria(14, local), [local, version])
+  const serie = useMemo(() => S.serieDiariaPorCanal(14, local), [local, version])
+  const kpi = useMemo(() => S.seriesKPI(14, local), [local, version])
+  const porDow = useMemo(() => S.ventaPorDiaSemana(14, local), [local, version])
+  const porHoraHoy = useMemo(() => S.ventaPorHora(rango), [rango, version])
+  const porHoraBase = useMemo(() => S.ventaPorHora({ desde: hcs.baseK, hasta: hcs.baseK, local }), [hcs.baseK, local, version])
   const clientesHoy = useMemo(() => {
     const db = S.estado()
     const hoy = hoyKey()
@@ -158,6 +170,20 @@ export function Hoy({ F, datos, onNuevos }) {
   const enCalle = enRuta.reduce((t, e) => t + e.total_cobrado, 0)
   const masFuera = enRuta[0]
   const conVenta = serie.valores.filter((v) => v > 0).length
+  const dow = diaSemana(hoyKey())
+  const DOW = [T('lun', 'Mon'), T('mar', 'Tue'), T('mié', 'Wed'), T('jue', 'Thu'), T('vie', 'Fri'), T('sáb', 'Sat'), T('dom', 'Sun')]
+  const comparable = hcs.baseN >= UMBRALES.comparacion
+  const vsTitulo = T(`Contra el ${dow} pasado a esta hora`, `Against last ${dow} at this time`)
+  const deltaDe = (actual, base, unidad) => { const v = variacion(actual, base, unidad); return v ? { ...v, title: vsTitulo } : null }
+  const ult = kpi.dias.length - 1
+  const minHoy = kpi.minutos[ult]
+  const minBase = kpi.base.i >= 0 ? kpi.minutos[kpi.base.i] : null
+  const deltaMin = minHoy != null && minBase != null && kpi.entregadas[kpi.base.i] >= UMBRALES.comparacion
+    ? (() => { const d = Math.round(minHoy) - Math.round(minBase); return { dir: d < 0 ? 'up' : d > 0 ? 'down' : 'flat', texto: `${d < 0 ? '▼' : d > 0 ? '▲' : '='} ${Math.abs(d)} min`, title: T(`Contra el ${dow} pasado`, `Against last ${dow}`) } })()
+    : null
+  const diaCorto = (i) => diaLargo(kpi.dias[i])
+  const horaCorte = Math.floor(acum.corte / 60)
+  const horasHoy = porHoraHoy.pedidos.map((v, i) => (porHoraHoy.horas[i] > horaCorte ? null : v))
 
   const avanzar = (p) => {
     const pasos = S.pasosDe(p)
@@ -170,7 +196,7 @@ export function Hoy({ F, datos, onNuevos }) {
   }
 
   const lineaAcum = hoyN >= 3
-    ? <AreaLinea id="hoy" alto={120} vivo
+    ? <AreaLinea id="hoy" alto={120} vivo rejilla
       series={[
         ...(hcs.baseN >= UMBRALES.comparacion ? [{ clase: 'referencia', puntos: acum.base.puntos }] : []),
         { clase: 'principal', puntos: acum.hoy.puntos },
@@ -240,15 +266,27 @@ export function Hoy({ F, datos, onNuevos }) {
             </>
           )}
         </section>
-        <Card span={5} i={0} title={T('Cómo va el día', 'How the day is going')} sub={T(`Lo cobrado hasta esta hora contra el ${diaSemana(hoyKey())} pasado`, `Takings so far against last ${diaSemana(hoyKey())}`)}>
+        <Card span={5} i={0} title={T('Cómo va el día', 'How the day is going')} sub={T(`Lo cobrado hasta esta hora contra el ${dow} pasado`, `Takings so far against last ${dow}`)}
+          tools={comparable && hoyN >= 3 ? <span className="d-chip-ref"><i aria-hidden />{T(`${dow} pasado`, `last ${dow}`)}</span> : null}>
           {lineaAcum}
         </Card>
       </div>
 
-      <div className="d-stats">
-        <Stat label={T('Pedidos', 'Orders')} value={num(hoyN)} foot={hoyN ? T(`${r.domicilio} a domicilio · ${r.retiro} para llevar`, `${r.domicilio} delivery · ${r.retiro} pickup`) : T('Todavía no entra ningún pedido.', 'No orders yet.')}
+      <div className="d-stats d-stats--6">
+        <Stat label={T('Pedidos hoy', 'Orders today')} value={num(hoyN)} foot={hoyN ? T(`${r.domicilio} a domicilio · ${r.retiro} para llevar`, `${r.domicilio} delivery · ${r.retiro} pickup`) : T('Todavía no entra ningún pedido.', 'No orders yet.')}
+          delta={comparable ? deltaDe(hoyN, hcs.baseN, 'n') : null}
+          chispa={<Chispa valores={kpi.pedidos} etiquetas={kpi.dias} formato={(v, i) => `${pedidosTxt(v)}${i === ult ? ` ${T('hasta ahora', 'so far')}` : ''}`} aria={T('Pedidos por día, últimos 14 días', 'Orders per day, last 14 days')} />}
           href={hoyN ? hrefPanel('pedidos', { from: 'hoy' }, A) : null} go={T(`Ver los ${hoyN} pedidos`, `See the ${hoyN} orders`)} />
+        <Stat label={T('Ticket promedio', 'Average ticket')} value={hoyN ? money(r.ticket) : SIN_DATO} foot={hoyN ? T('Por pedido, IVA incluido', 'Per order, VAT included') : T('Sin pedidos, no hay promedio.', 'No orders, no average.')}
+          delta={comparable && hoyN ? deltaDe(r.ticket, hcs.base / hcs.baseN, 'dinero') : null}
+          chispa={<Chispa valores={kpi.ticket} etiquetas={kpi.dias} formato={(v) => money(v)} aria={T('Ticket promedio por día, últimos 14 días', 'Average ticket per day, last 14 days')} />}
+          href={hoyN ? hrefPanel('pedidos', { orden: 'total', from: 'hoy' }, A) : null} go={T('Ver del más grande al más chico', 'See biggest to smallest')} />
         <Stat label={T('En marcha ahora', 'In progress now')} value={num(r.pendientes)} tono={r.pendientes ? 'es-ahora' : ''}
+          chispa={r.pendientes ? (
+            <span className="d-segm" role="img" aria-label={[['recibido', T('recibidos', 'received')], ['horno', T('en el horno', 'in the oven')], ['camino', T('en camino', 'on the way')]].map(([k, t]) => `${r.porEstado[k] || 0} ${t}`).join(', ')}>
+              {['recibido', 'horno', 'camino'].map((k) => r.porEstado[k] ? <i key={k} className={k} style={{ flex: r.porEstado[k] }} /> : null)}
+            </span>
+          ) : null}
           foot={r.pendientes
             ? <>{[['recibido', T('recibidos', 'received')], ['horno', T('en el horno', 'in the oven')], ['camino', T('en camino', 'on the way')]].filter(([k]) => r.porEstado[k]).map(([k, t]) => `${r.porEstado[k]} ${t}`).join(' · ')}
               {enMarchaLate ? <> · <span className="d-late">{enMarchaLate} {T(enMarchaLate === 1 ? 'lleva' : 'llevan', enMarchaLate === 1 ? 'is' : 'are')} {T('más de 35 min', 'past 35 min')}</span></> : null}</>
@@ -256,21 +294,29 @@ export function Hoy({ F, datos, onNuevos }) {
           href={r.pendientes ? hrefPanel('pedidos', { estado: 'en_curso', from: 'hoy' }, A) : null} go={T(`Ver los ${r.pendientes} en marcha`, `See the ${r.pendientes} in progress`)} />
         <Stat label={T('Entregas a tiempo', 'On-time deliveries')} value={r.entregadas ? tasa(r.aTiempo, r.entregadas).texto : SIN_DATO}
           foot={r.entregadas ? T('Hasta 35 minutos cuenta a tiempo', 'Up to 35 minutes counts as on time') : T('Aún ninguna entrega terminada', 'No finished deliveries yet')}
+          chispa={<Chispa valores={kpi.aTiempoParte} etiquetas={kpi.dias} formato={(v, i) => tasa(kpi.aTiempo[i], kpi.entregadas[i]).texto} aria={T('Entregas a tiempo por día, últimos 14 días', 'On-time deliveries per day, last 14 days')} />}
           href={r.entregadas ? hrefPanel('pedidos', { estado: 'entregado', modalidad: 'domicilio', orden: 'minutos', from: 'hoy' }, A) : null} go={T(`Ver las ${r.entregadas} entregas`, `See the ${r.entregadas} deliveries`)} />
-        <Stat label={T('Pedidos por teléfono', 'Orders by phone')} value={embudo.total ? `${embudo.pedidos} ${T('de', 'of')} ${embudo.total}` : SIN_DATO}
+        <Stat label={T('Por teléfono · Camila', 'By phone · Camila')} value={embudo.total ? `${embudo.pedidos} ${T('de', 'of')} ${embudo.total}` : SIN_DATO}
           foot={embudo.total ? `${T('Camila contestó', 'Camila answered')} ${embudo.contestadas === embudo.total ? T('las ', 'all ') + embudo.total : embudo.contestadas + ` ${T('de', 'of')} ` + embudo.total}${embudo.sinPedido ? ` · ${embudo.sinPedido} ${T('no pidieron', 'did not order')}` : ''}${embudo.colgo ? ` · ${embudo.colgo} ${T(embudo.colgo === 1 ? 'colgó' : 'colgaron', 'hung up')}` : ''}` : T('Aún ninguna llamada hoy', 'No calls yet today')}
+          delta={kpi.base.llamadas >= UMBRALES.comparacion ? deltaDe(embudo.total, kpi.base.llamadas, 'n') : null}
+          chispa={<Chispa valores={kpi.llamadas} etiquetas={kpi.dias} formato={(v) => cuenta(v, 'llamada', 'llamadas', 'call', 'calls')} aria={T('Llamadas por día, últimos 14 días', 'Calls per day, last 14 days')} />}
           href={embudo.total ? hrefPanel('camila', { from: 'hoy' }, A) : null} go={T(`Ver las ${embudo.total} llamadas`, `See the ${embudo.total} calls`)} />
+        <Stat label={T('Tiempo de entrega hoy', 'Delivery time today')} value={minHoy != null ? `${Math.round(minHoy)} min` : SIN_DATO}
+          foot={minHoy != null ? T(`Del pedido a la puerta, en ${cuenta(kpi.entregadas[ult], 'entrega', 'entregas', 'delivery', 'deliveries')}`, `From order to door, over ${cuenta(kpi.entregadas[ult], 'entrega', 'entregas', 'delivery', 'deliveries')}`) : T('Aún ninguna entrega terminada', 'No finished deliveries yet')}
+          delta={deltaMin}
+          chispa={<Chispa valores={kpi.minutos} etiquetas={kpi.dias} formato={(v) => `${Math.round(v)} min`} aria={T('Minutos de entrega promedio por día, últimos 14 días', 'Average delivery minutes per day, last 14 days')} />}
+          href={minHoy != null ? hrefPanel('pedidos', { estado: 'entregado', modalidad: 'domicilio', orden: 'minutos', from: 'hoy' }, A) : null} go={T('Ver de la más lenta a la más rápida', 'See slowest to fastest')} />
       </div>
 
       <div className="d-grid">
         <Card span={7} i={1} title={enRuta.length ? T('Motos en la calle', 'Riders out') : T('Entregas de hoy', "Today's deliveries")}
           sub={enRuta.length ? `${cuenta(enRuta.length, 'moto', 'motos', 'rider', 'riders')} ${T('ahora mismo', 'right now')}${enMarchaLate ? ` · ${enMarchaLate} ${T('pasada de 35 min', 'past 35 min')}` : ''} · ${money(enCalle)} ${T('en la calle', 'on the road')}` : huella.length ? T(`${huella.length} entregas ya llegaron`, `${huella.length} deliveries have arrived`) : T('Todavía no sale ninguna moto', 'No rider has gone out yet')}
           foot={<><span>{enRuta.length ? T('Toque el mapa para seguir cada moto', 'Tap the map to follow each rider') : T('Los puntos son las entregas de hoy', "The dots are today's deliveries")}</span><a href={hrefPanel('motos', {}, A)} data-drill>{T('Ver todas ›', 'See all ›')}</a></>}>
-          <FleetMap compacto entregas={enRuta} huella={enRuta.length ? [] : huella} height={movil ? 220 : 320} sedesVisibles={enRuta.length ? undefined : conectados.map((l) => l.id)} onClickCompacto={() => { window.location.hash = hrefPanel('motos', {}, A).slice(1) }} />
+          <FleetMap compacto entregas={enRuta} huella={enRuta.length ? [] : huella} height={movil ? 220 : 400} sedesVisibles={enRuta.length ? undefined : conectados.map((l) => l.id)} onClickCompacto={() => { window.location.hash = hrefPanel('motos', {}, A).slice(1) }} />
           {enRuta.length > 0 && (
             <table className="d-table" style={{ marginTop: 12 }}>
               <tbody>
-                {enRuta.slice(0, 4).map((e) => (
+                {enRuta.slice(0, 5).map((e) => (
                   <tr key={e.pedido_id}>
                     <td data-l={T('Motorizado', 'Rider')}><a href={hrefPanel('motos/' + e.pedido_id, {}, A)}>{e.repartidor || T('Motorizado', 'Rider')}</a></td>
                     <td data-l={T('Local', 'Branch')} className="d-quiet">{S.nombreLocal(e.local_id)} → {e.destino?.sector || ''}</td>
@@ -393,18 +439,42 @@ export function Hoy({ F, datos, onNuevos }) {
       </div>
 
       <div className="d-grid">
-        <Card span={7} i={9} title={T('Los últimos 14 días', 'The last 14 days')} sub={T('Cuánto se cobró cada día · toque un día para ver sus pedidos', 'How much was taken each day · tap a day to see its orders')}
-          foot={<a href={hrefPanel('resumen', {}, F)} data-drill>{T('Abrir Resumen ›', 'Open Summary ›')}</a>}>
+        <Card span={7} i={9} title={T('Los últimos 14 días', 'The last 14 days')} sub={T('Cuánto se cobró cada día y por dónde entró · toque un día para ver sus pedidos', 'How much was taken each day and where it came from · tap a day to see its orders')}
+          foot={<><span>{T('El fondo más claro son los fines de semana; la raya azul cortada, un día normal.', 'The lighter background marks weekends; the dashed blue line, a normal day.')}</span><a href={hrefPanel('resumen', {}, F)} data-drill>{T('Abrir Resumen ›', 'Open Summary ›')}</a></>}>
           {conVenta >= 7
-            ? <Columnas dias={serie.dias} valores={serie.valores} pedidos={serie.pedidos}
+            ? <ColumnasApiladas dias={serie.dias} series={[
+                { etiqueta: CANAL.llamada, valores: serie.series.llamada, tono: 'a' },
+                { etiqueta: CANAL.web, valores: serie.series.web, tono: 'b' },
+                { etiqueta: CANAL.whatsapp, valores: serie.series.whatsapp, tono: 'c' },
+              ]}
               href={(i) => hrefPanel('pedidos', { periodo: 'dia', dia: serie.dias[i], from: 'hoy' }, F)}
-              titulo={(i) => `${diaLargo(serie.dias[i])}: ${money(serie.valores[i])}, ${pedidosTxt(serie.pedidos[i])}`} />
+              titulo={(i) => `${diaLargo(serie.dias[i])}: ${money(serie.valores[i])}, ${pedidosTxt(serie.pedidos[i])} · ${CANAL.llamada.toLowerCase()} ${money(serie.series.llamada[i])} · ${CANAL.web.toLowerCase()} ${money(serie.series.web[i])} · ${CANAL.whatsapp.toLowerCase()} ${money(serie.series.whatsapp[i])}`} />
             : <p className="d-empty">{T(`Este gráfico se enciende a los 7 días con venta. Van ${conVenta}.`, `This chart switches on at 7 days with sales. There are ${conVenta}.`)}</p>}
         </Card>
         <Card span={5} i={10} title={T('Lo que más se pidió hoy', 'Most ordered today')} sub={T('Los cinco platos que más dinero dejaron', 'The five dishes that made the most money')}>
           {top.length === 0 ? <p className="d-empty">{T('Aún ningún plato vendido.', 'No dishes sold yet.')}</p> : (
             <Rank rows={top} meta={(x) => platos(x.unidades)} href={(x) => hrefPanel('pedidos', { categoria: x.categoria, from: 'hoy' }, A)} d0={entrada ? 240 : 0} />
           )}
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={7} i={11} title={T('Pedidos por hora', 'Orders by hour')} sub={T(`Cuántos entraron cada hora, hoy contra el ${dow} pasado`, `How many came in each hour, today against last ${dow}`)}
+          foot={T('Las horas que todavía no llegan quedan vacías. La tapa amarilla es la hora en curso.', 'Hours still to come are left empty. The yellow cap marks the current hour.')}>
+          {hoyN >= 3 || hcs.baseN >= 3
+            ? <ColumnasDobles etiquetas={porHoraHoy.horas.map((h) => `${h}h`)} resaltar={porHoraHoy.horas.indexOf(horaCorte)}
+              series={[
+                { etiqueta: T('Hoy', 'Today'), valores: horasHoy, clase: 'd-col--hoy' },
+                { etiqueta: T(`${dow} pasado`, `Last ${dow}`), valores: porHoraBase.pedidos, clase: 'd-col--base' },
+              ]}
+              formato={(v) => String(v)}
+              titulo={(i) => `${porHoraHoy.horas[i]}:00 – ${porHoraHoy.horas[i] + 1}:00 · ${T('hoy', 'today')} ${horasHoy[i] == null ? T('todavía no', 'not yet') : pedidosTxt(horasHoy[i])} · ${T(`${dow} pasado`, `last ${dow}`)} ${pedidosTxt(porHoraBase.pedidos[i])}`} />
+            : <p className="d-empty">{T('La comparación por hora aparece desde el tercer pedido.', 'The hourly comparison appears from the third order.')}</p>}
+        </Card>
+        <Card span={5} i={12} title={T('Qué día se vende más', 'Which day sells most')} sub={T('Promedio por día de la semana, los últimos 14 días', 'Average per weekday, the last 14 days')}
+          foot={T('La columna verde claro es el día que más vende. Hoy es', 'The light-green column is the busiest day. Today is') + ` ${dow}.`}>
+          <ColumnasSimples etiquetas={DOW} valores={porDow.valores} resaltar={porDow.valores.indexOf(Math.max(...porDow.valores))} alto={150} rejilla
+            titulo={(i) => `${DOW[i]}: ${money(porDow.valores[i])} ${T('en promedio', 'on average')}`} />
         </Card>
       </div>
       <span hidden>{tic}</span>
@@ -628,7 +698,8 @@ function lineas({ sem, cats, embudo, local, porLocal, A }) {
 export function Resumen({ F }) {
   const version = useVersion()
   const local = F.local || undefined
-  const serie = useMemo(() => S.serieDiaria(14, local), [local, version])
+  const serie = useMemo(() => S.serieDiariaPorCanal(14, local), [local, version])
+  const calor = useMemo(() => S.matrizHoraDia(14, local), [local, version])
   const sem = useMemo(() => S.semanaContraSemana(local), [local, version])
   const rango7 = useMemo(() => ({ desde: serie.dias[serie.dias.length - 7], hasta: serie.dias[serie.dias.length - 1], local }), [serie, local])
   const cats = useMemo(() => S.ventaPorCategoria(rango7), [rango7, version])
@@ -674,11 +745,16 @@ export function Resumen({ F }) {
               : <p className="d-empty">{T(`Se compara a partir de 5 pedidos en la semana anterior. Van ${sem.n0}.`, `Comparison starts at 5 orders in the previous week. There are ${sem.n0}.`)}</p>}
           </div>
         </Card>
-        <Card span={6} i={1} title={T('Los últimos 14 días', 'The last 14 days')} sub={T('Cuánto se cobró cada día · toque un día para ver sus pedidos', 'How much was taken each day · tap a day to see its orders')}>
+        <Card span={6} i={1} title={T('Los últimos 14 días', 'The last 14 days')} sub={T('Cuánto se cobró cada día y por dónde entró · toque un día para ver sus pedidos', 'How much was taken each day and where it came from · tap a day to see its orders')}
+          foot={T('El fondo más claro son los fines de semana; la raya azul cortada, un día normal.', 'The lighter background marks weekends; the dashed blue line, a normal day.')}>
           {conVenta >= 7
-            ? <Columnas dias={serie.dias} valores={serie.valores} pedidos={serie.pedidos}
+            ? <ColumnasApiladas dias={serie.dias} series={[
+                { etiqueta: CANAL.llamada, valores: serie.series.llamada, tono: 'a' },
+                { etiqueta: CANAL.web, valores: serie.series.web, tono: 'b' },
+                { etiqueta: CANAL.whatsapp, valores: serie.series.whatsapp, tono: 'c' },
+              ]}
               href={(i) => hrefPanel('pedidos', { periodo: 'dia', dia: serie.dias[i], from: 'resumen' }, F)}
-              titulo={(i) => `${diaLargo(serie.dias[i])}: ${money(serie.valores[i])}, ${pedidosTxt(serie.pedidos[i])}`} />
+              titulo={(i) => `${diaLargo(serie.dias[i])}: ${money(serie.valores[i])}, ${pedidosTxt(serie.pedidos[i])} · ${CANAL.llamada.toLowerCase()} ${money(serie.series.llamada[i])} · ${CANAL.web.toLowerCase()} ${money(serie.series.web[i])} · ${CANAL.whatsapp.toLowerCase()} ${money(serie.series.whatsapp[i])}`} />
             : <p className="d-empty">{T(`Este gráfico se enciende a los 7 días con venta. Van ${conVenta}.`, `This chart switches on at 7 days with sales. There are ${conVenta}.`)}</p>}
         </Card>
       </div>
@@ -701,14 +777,23 @@ export function Resumen({ F }) {
 
       <div className="d-grid">
         <Card span={6} i={6} title={T('A qué hora se vende', 'When the day sells')} sub={T('Lo cobrado por hora, los últimos 7 días', 'Takings by hour, the last 7 days')}>
-          <ColumnasSimples etiquetas={porHora.horas.map((h) => `${h}h`)} valores={porHora.valores} resaltar={porHora.valores.indexOf(Math.max(...porHora.valores))}
+          <ColumnasSimples etiquetas={porHora.horas.map((h) => `${h}h`)} valores={porHora.valores} resaltar={porHora.valores.indexOf(Math.max(...porHora.valores))} alto={132} rejilla
             titulo={(i) => `${porHora.horas[i]}:00 – ${porHora.horas[i] + 1}:00: ${money(porHora.valores[i])}, ${pedidosTxt(porHora.pedidos[i])}`} />
           <p className="d-chartfoot">{T('La columna verde claro es la hora que más vende.', 'The light-green column is the busiest hour.')}</p>
         </Card>
         <Card span={6} i={7} title={T('Qué día se vende más', 'Which day sells most')} sub={T('Promedio por día de la semana, los últimos 14 días', 'Average per weekday, the last 14 days')}>
-          <ColumnasSimples etiquetas={DOW} valores={porDow.valores} resaltar={porDow.valores.indexOf(Math.max(...porDow.valores))} alto={132}
+          <ColumnasSimples etiquetas={DOW} valores={porDow.valores} resaltar={porDow.valores.indexOf(Math.max(...porDow.valores))} alto={132} rejilla
             titulo={(i) => `${DOW[i]}: ${money(porDow.valores[i])} ${T('en promedio', 'on average')}`} />
           <p className="d-chartfoot">{T('Cada columna es lo que se cobra un día así, en promedio.', 'Each column is what a day like that takes, on average.')}</p>
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={12} i={10} title={T('Cuándo se vende: día × hora', 'When it sells: day × hour')} sub={T('Lo que se cobra en promedio en cada hora de cada día de la semana, los últimos 14 días', 'Average takings for each hour of each weekday, the last 14 days')}
+          foot={T('Del azul (poco) al verde encendido (mucho). La celda amarilla es la hora más fuerte de la semana. Pase el ratón para ver la cifra.', 'From blue (little) to bright green (a lot). The yellow cell is the strongest hour of the week. Hover to see the figure.')}>
+          {conVenta >= 7
+            ? <Calor filas={DOW} columnas={calor.horas.map((h) => `${h}h`)} valores={calor.valores} formato={money0} />
+            : <p className="d-empty">{T(`El mapa de calor se enciende a los 7 días con venta. Van ${conVenta}.`, `The heat map switches on at 7 days with sales. There are ${conVenta}.`)}</p>}
         </Card>
       </div>
 

@@ -49,6 +49,31 @@ const REFERENCIAS = ['Edificio Torres del Parque, piso 4', 'Casa esquinera port�
 const PILOTO = ['floresta', 'gonzalez-suarez', 'republica-del-salvador', 'veintimilla',
   'cumbaya', 'isla-floreana', 'bicentenario', 'tumbaco', 'ponciano', 'quitumbe', 'plaza-del-valle', 'carapungo']
 
+// Las diez motos que la demo enseña ahora mismo, todas en el centro-norte de
+// Quito (Floresta, González Suárez, República del Salvador, Veintimilla, Isla
+// Floreana). Con Cumbayá, Quitumbe o Carapungo el mapa compacto se aleja a todo
+// el valle y los pines se funden en uno con un número. Rumbo y distancia de
+// cada casa están elegidos a mano para que los diez pines queden a más de 60 px
+// entre sí en el encuadre de 400 px, también mientras avanzan hacia la casa.
+// Los minutos fuera van de 4 a 28; dos pasan de 35 a propósito (se ven tarde).
+const MOTOS = [
+  { local: 'isla-floreana', rumbo: 80, metros: 1200, min: 4, sector: 'El Inca' },
+  { local: 'republica-del-salvador', rumbo: 90, metros: 700, min: 8, sector: 'Bellavista' },
+  { local: 'veintimilla', rumbo: 340, metros: 1400, min: 11, sector: 'La Pradera' },
+  { local: 'isla-floreana', rumbo: 270, metros: 1400, min: 14, sector: 'Quito Tenis' },
+  { local: 'floresta', rumbo: 90, metros: 700, min: 18, sector: 'La Floresta' },
+  { local: 'republica-del-salvador', rumbo: 250, metros: 1300, min: 22, sector: 'La Carolina' },
+  { local: 'floresta', rumbo: 70, metros: 1500, min: 25, sector: 'Guápulo' },
+  { local: 'gonzalez-suarez', rumbo: 20, metros: 1000, min: 28, sector: 'Bellavista' },
+  { local: 'veintimilla', rumbo: 290, metros: 1300, min: 37, sector: 'Santa Clara' },
+  { local: 'gonzalez-suarez', rumbo: 310, metros: 800, min: 43, sector: 'La Paz' },
+]
+// Un punto a `metros` del local, con rumbo en grados desde el norte.
+const desplazar = (sede, rumbo, metros) => {
+  const b = (rumbo * Math.PI) / 180
+  return { lat: sede.lat + (metros * Math.cos(b)) / 111320, lng: sede.lng + (metros * Math.sin(b)) / (111320 * Math.cos((sede.lat * Math.PI) / 180)) }
+}
+
 const REPARTIDORES = ['Wilson', 'Édison', 'Kevin', 'Bryan', 'Darío', 'Alexis', 'Jefferson', 'Steeven', 'Marlon', 'Andrés', 'Fabián', 'Cristian', 'Luis', 'Paúl']
 
 const MOTIVOS = ['precio', 'fuera de cobertura', 'demora estimada', 'producto no disponible', 'solo consultaba']
@@ -56,6 +81,14 @@ const MOTIVOS = ['precio', 'fuera de cobertura', 'demora estimada', 'producto no
 const vendibles = MENU.filter((m) => !m.extra)
 
 export function sembrar({ dias = 14 } = {}) {
+  // Todo en un bloque: una sola escritura al final y `sembrado` queda guardado
+  // (antes se perdía y la demo se volvía a sembrar en cada carga).
+  let resultado = null
+  S.enBloque(() => { resultado = sembrarDentro({ dias }) })
+  return resultado
+}
+
+function sembrarDentro({ dias }) {
   S.reset()
   semilla = 20260913
 
@@ -108,7 +141,7 @@ export function sembrar({ dias = 14 } = {}) {
 
     for (let i = 0; i < nPedidos; i++) {
       const persona = pick(gente)
-      const local = pick(PILOTO)
+      let local = pick(PILOTO)
       let modalidad = rnd() > 0.28 ? 'domicilio' : 'retiro'
       const canal = rnd() > 0.45 ? 'llamada' : rnd() > 0.4 ? 'web' : 'whatsapp'
 
@@ -138,21 +171,38 @@ export function sembrar({ dias = 14 } = {}) {
         })
         subtotal += precio * cant
       }
-      const envio = modalidad === 'retiro' || subtotal >= 25 ? 0 : 2.5
       const dirs = persona.direcciones
-      const dir = modalidad === 'domicilio' && dirs.length ? pick(dirs) : null
+      let dir = modalidad === 'domicilio' && dirs.length ? pick(dirs) : null
 
-      // Los últimos pedidos de hoy quedan en curso, y varios a domicilio ya en la
+      // Los últimos pedidos de hoy quedan en curso, y diez a domicilio ya en la
       // calle, para que el mapa de la flota tenga algo que mostrar.
       const esHoy = d === 0
       let estado = 'entregado'
+      let moto = null, salio = null
       if (esHoy && i >= nPedidos - 16) {
-        // Diez motos en la calle siempre: es lo que la demo tiene que enseñar.
-        if (i < nPedidos - 6) { modalidad = 'domicilio'; estado = 'camino' }
-        else estado = modalidad === 'domicilio' ? pick(['horno', 'recibido']) : pick(['horno', 'recibido'])
-        // Lo que está en marcha entró hace poco: un ticket de 150 minutos no existe.
-        t.setTime(Date.now() - entre(estado === 'recibido' ? 1 : estado === 'horno' ? 6 : 12, estado === 'camino' ? 44 : 22) * 60000)
+        const k = i - (nPedidos - 16)
+        if (k < MOTOS.length) {
+          // Diez motos en la calle siempre: es lo que la demo tiene que enseñar.
+          moto = MOTOS[k]
+          modalidad = 'domicilio'; estado = 'camino'; local = moto.local
+          const sede = LOCALES.find((l) => l.id === local)
+          // Cada moto va a su propia casa, nueva para esa persona (la calle lleva
+          // número para que no se funda con una dirección igual ya guardada).
+          dir = S.agregarDireccion(persona.persona_id, {
+            alias: pick(['Casa', 'Oficina', 'Departamento']),
+            calle: `${pick(CALLES)} N${20 + k}-${entre(100, 999)}`, referencia: pick(REFERENCIAS), sector: moto.sector,
+            ciudad: 'Quito', local_id: local,
+            ...desplazar(sede, moto.rumbo, moto.metros),
+          })
+          salio = Date.now() - moto.min * 60000
+          t.setTime(salio - entre(6, 10) * 60000)
+        } else {
+          estado = pick(['horno', 'recibido'])
+          // Lo que está en marcha entró hace poco: un ticket de 150 minutos no existe.
+          t.setTime(Date.now() - entre(estado === 'recibido' ? 1 : 6, 22) * 60000)
+        }
       }
+      const envio = modalidad === 'retiro' || subtotal >= 25 ? 0 : 2.5
 
       const pedido = S.registrarPedido({
         persona_id: persona.persona_id,
@@ -164,24 +214,22 @@ export function sembrar({ dias = 14 } = {}) {
         forma_pago: pick(['efectivo', 'tarjeta', 'tarjeta', 'transferencia']),
         creado_en: t.getTime(),
         minutos_entrega: estado === 'entregado' ? entre(22, 48) : null,
-        repartidor: modalidad === 'domicilio' ? pick(REPARTIDORES) : null,
-        salio_en: estado === 'camino' ? Math.min(Date.now() - 3 * 60000, t.getTime() + entre(6, 10) * 60000) : null,
+        repartidor: modalidad === 'domicilio' ? (moto ? REPARTIDORES[i % REPARTIDORES.length] : pick(REPARTIDORES)) : null,
+        salio_en: salio,
         rider: null,   // se calcula abajo, sobre la ruta local -> casa
         items,
       })
 
       // La moto va en algún punto entre el local y la casa, según el tiempo que
       // lleva fuera. Encima de la casa parecería que ya llegó y nadie abrió.
-      if (estado === 'camino' && dir && dir.lat != null) {
+      // `demo: true` hace que enRuta() la vaya moviendo sola con cada refresco.
+      if (moto && dir && dir.lat != null) {
         const sede = LOCALES.find((l) => l.id === local)
-        if (sede && sede.lat != null) {
-          const min = Math.round((Date.now() - pedido.salio_en) / 60000)
-          const f = Math.min(0.92, Math.max(0.08, min / 30))
-          S.estado().pedidos[pedido.pedido_id].rider = {
-            lat: sede.lat + (dir.lat - sede.lat) * f,
-            lng: sede.lng + (dir.lng - sede.lng) * f,
-            at: Date.now(),
-          }
+        const f = Math.min(0.92, Math.max(0.08, moto.min / 30))
+        S.estado().pedidos[pedido.pedido_id].rider = {
+          lat: sede.lat + (dir.lat - sede.lat) * f,
+          lng: sede.lng + (dir.lng - sede.lng) * f,
+          at: Date.now(), demo: true,
         }
       }
 
@@ -202,8 +250,10 @@ export function sembrar({ dias = 14 } = {}) {
     // Llamadas que NO terminaron en pedido. Sin ellas el denominador miente y
     // la tasa de cierre sale del 100 %.
     const perdidas = finde ? entre(4, 9) : entre(2, 6)
+    // Las de hoy tampoco pueden ser de una hora que todavía no llegó.
+    const topeLlamadas = d === 0 ? Math.min(21, Math.max(15, new Date().getHours())) : 21
     for (let i = 0; i < perdidas; i++) {
-      const t = new Date(fecha); t.setHours(entre(12, 21), entre(0, 59), 0, 0)
+      const t = new Date(fecha); t.setHours(entre(12, topeLlamadas), entre(0, 59), 0, 0)
       const noContesta = rnd() > 0.86
       S.registrarConversacion({
         telefono: celular(),

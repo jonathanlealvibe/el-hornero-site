@@ -11,6 +11,9 @@ export const money = (n) =>
 
 export const num = (n) => Number(n || 0).toLocaleString('en-US')
 
+// Para los ejes de los gráficos: $1,500 sin centavos, que a ese tamaño no se leen.
+export const money0 = (n) => '$' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
+
 // La única definición de "hoy" en todo el tablero. Sin esto, a las 20:30 de
 // Quito el servidor en UTC ya cree que es mañana y Hoy muestra $0.00.
 export const dayKey = (d = new Date()) =>
