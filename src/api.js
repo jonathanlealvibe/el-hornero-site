@@ -1,6 +1,7 @@
 // Thin client for the El Hornero order/tracking backend.
 // Runtime config: window.EH_API (set in index.html) or VITE_API_BASE. Empty = demo mode (localStorage + simulated rider).
 import LZString from 'lz-string'
+import { FREE_DELIVERY_OVER, DELIVERY_FEE } from './data.js'
 
 const BASE = (typeof window !== 'undefined' && window.EH_API) || import.meta.env.VITE_API_BASE || ''
 export const DEMO = !BASE
@@ -73,7 +74,18 @@ export async function getOrder(id, packed) {
       // customer always sees the order progress from the beginning.
       const age = Date.now() - (fromLink.createdAt || 0)
       if (!fromLink.createdAt || age > 2 * 60 * 60 * 1000) fromLink.createdAt = Date.now()
-      all[id] = fromLink; write(all)
+      // Un link armado por el CRM no trae coordenadas: se ubican aquí, una vez.
+      if (!fromLink.dest) {
+        const geo = fromLink.modalidad === 'A domicilio' ? await geocode(fromLink.direccion) : null
+        fromLink.dest = geo || (fromLink.modalidad === 'A domicilio' ? DEFAULT_DEST : { lat: LOCAL.lat, lng: LOCAL.lng })
+        fromLink.geocoded = !!geo
+        fromLink.rider = { lat: LOCAL.lat, lng: LOCAL.lng, at: Date.now() }
+      }
+      // El id real viene dentro del link; se guarda con ese, no con el de la ruta.
+      const real = fromLink.id || id
+      all[real] = fromLink
+      if (real !== id) all[id] = fromLink
+      write(all)
     }
   }
   const o = all[id]; if (!o) return null
@@ -172,8 +184,57 @@ function unpackLegacy(packed) {
   }
 }
 
+
+// ---- Formato "q": el que arma GoHighLevel con campos combinados, sin servidor ----
+// Camila escribe UNA línea en el campo link_datos y el workflow la pega al final del link:
+//   n=Mauricio~a=Andrade~m=D~s=La-Carolina~d=Av-Amazonas-y-NNUU~r=Edificio-Torres~p=C~it=Napolitana-M*1*15.30;Pan-de-ajo*1*2.40
+// Reglas: ~ separa campos, = separa clave y valor, - es un espacio, ; separa ítems,
+// * separa nombre, cantidad y precio; los ítems van separados por punto y coma.
+// Todo URL-safe para que WhatsApp no corte el link.
+const deQ = (v) => { try { return decodeURIComponent(String(v || '')).replace(/-/g, ' ').trim() } catch { return String(v || '').replace(/-/g, ' ').trim() } }
+const hash6 = (str) => {
+  let h = 5381
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0
+  const A = '23456789BCDFGHJKLMNPQRSTVWXZ'
+  let out = ''
+  for (let i = 0; i < 6; i++) { out += A[h % A.length]; h = Math.floor(h / A.length) || (h * 7 + i) }
+  return out
+}
+export const esFormatoQ = (packed) => /^(q\.)?[a-z]{1,2}=/.test(String(packed || ''))
+
+export function unpackQ(raw) {
+  const s = String(raw || '').replace(/^q\./, '')
+  const kv = {}
+  for (const part of s.split('~')) { const i = part.indexOf('='); if (i > 0) kv[part.slice(0, i)] = part.slice(i + 1) }
+  // Separador de ítems: punto y coma. Se aceptan también el más y el espacio
+  // (un + dentro del hash llega convertido en espacio por URLSearchParams).
+  const items = (kv.it || '').split(/[;+ ]+/).filter(Boolean).map((x) => {
+    const [nm, c, p] = x.split('*')
+    return { nombre: deQ(nm), cantidad: Math.max(1, parseInt(c, 10) || 1), precio: Math.round((parseFloat(p) || 0) * 100) / 100 }
+  })
+  if (!items.length && !kv.g) return null
+  const modalidad = (kv.m || 'D').toUpperCase().startsWith('R') ? 'Para llevar' : 'A domicilio'
+  const subtotal = Math.round(items.reduce((t, i) => t + i.precio * i.cantidad, 0) * 100) / 100
+  const envio = modalidad === 'A domicilio' && subtotal > 0 && subtotal < FREE_DELIVERY_OVER ? DELIVERY_FEE : 0
+  const total = kv.g ? Math.round(parseFloat(kv.g) * 100) / 100 : Math.round((subtotal + envio) * 100) / 100
+  const pago = { E: 'efectivo', T: 'transferencia', C: 'tarjeta' }[(kv.p || 'E').toUpperCase()[0]] || 'efectivo'
+  const calle = deQ(kv.d)
+  return {
+    id: kv.i ? deQ(kv.i).toUpperCase().replace(/\s/g, '') : 'EH' + hash6(s),
+    cliente: { nombre: deQ(kv.n), apellido: deQ(kv.a), telefono: deQ(kv.t), cedula: null },
+    modalidad,
+    direccion: calle || kv.s ? { calle, referencia: deQ(kv.r), sector: deQ(kv.s) } : null,
+    items,
+    subtotal, envio, iva: Math.round((subtotal - subtotal / 1.15) * 100) / 100, total,
+    payMethod: pago, cambioPara: null, factura: 'consumidor_final',
+    createdAt: Date.now(), dest: null, paid: pago === 'tarjeta' ? false : null,
+    speed: 1, fromLink: true, sinCoordenadas: true,
+  }
+}
+
 export function unpackOrder(packed) {
   if (!packed) return null
+  if (esFormatoQ(packed)) { try { return unpackQ(packed) } catch { return null } }
   try {
     const json = LZString.decompressFromEncodedURIComponent(packed)
     if (json) {

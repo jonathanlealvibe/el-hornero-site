@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getOrder, updateOrder, trackUrl } from '../api.js'
+import { go } from '../router.js'
 
 const money = (n) => '$' + Number(n).toFixed(2)
 
@@ -10,7 +11,13 @@ export default function Pay({ id, packed }) {
   const [f, setF] = useState({ num: '', exp: '', cvv: '', nom: '' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
-  useEffect(() => { getOrder(id, packed).then((r) => (r ? setO(r) : setMissing(true))) }, [id, packed])
+  useEffect(() => {
+    getOrder(id, packed).then((r) => {
+      if (!r) { setMissing(true); return }
+      if (r.id && r.id !== id) { go(`/pago/${r.id}${packed ? `?d=${packed}` : ''}`); return }
+      setO(r)
+    })
+  }, [id, packed])
 
   if (missing) return <section className="page-doc"><a href="#/" className="back-link">← Ir al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
   if (!o) return <section className="page-doc"><p>Cargando…</p></section>
@@ -22,7 +29,7 @@ export default function Pay({ id, packed }) {
     e.preventDefault(); if (!ready || step !== 'form') return
     setStep('processing')
     await new Promise((r) => setTimeout(r, 1800))
-    await updateOrder(id, { paid: true })
+    await updateOrder(o.id || id, { paid: true })
     const fresh = await getOrder(id, packed)
     setO(fresh); setStep('done')
   }

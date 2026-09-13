@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getOrder, STATUS_LABEL, STATUS_LABEL_PICKUP, DEMO, demoJump, demoStep, demoFast, demoReset, trackUrl, WA, LOCAL_TEL } from '../api.js'
 import Map from './Map.jsx'
+import { go } from '../router.js'
 
 const money = (n) => '$' + Number(n).toFixed(2)
 const STEPS = ['recibido', 'horno', 'camino', 'entregado']
@@ -14,7 +15,13 @@ export default function Order({ id, packed }) {
   const refresh = async () => setO(await getOrder(id, packed))
   useEffect(() => {
     let alive = true
-    const tick = async () => { const r = await getOrder(id, packed); if (!alive) return; if (!r) setMissing(true); else setO(r) }
+    const tick = async () => {
+      const r = await getOrder(id, packed); if (!alive) return
+      if (!r) { setMissing(true); return }
+      // Un link armado por el CRM llega con id "q": el id real viene adentro.
+      if (r.id && r.id !== id) { go(`/pedido/${r.id}${packed ? `?d=${packed}` : ''}`); return }
+      setO(r)
+    }
     tick(); const t = setInterval(tick, 1500); return () => { alive = false; clearInterval(t) }
   }, [id, packed])
 
