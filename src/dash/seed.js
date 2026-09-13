@@ -49,6 +49,8 @@ const REFERENCIAS = ['Edificio Torres del Parque, piso 4', 'Casa esquinera port�
 const PILOTO = ['floresta', 'gonzalez-suarez', 'republica-del-salvador', 'veintimilla',
   'cumbaya', 'isla-floreana', 'bicentenario']
 
+const REPARTIDORES = ['Wilson', 'Édison', 'Kevin', 'Bryan', 'Dario', 'Alexis', 'Jefferson', 'Steeven']
+
 const MOTIVOS = ['precio', 'fuera de cobertura', 'demora estimada', 'producto no disponible', 'solo consultaba']
 
 const vendibles = MENU.filter((m) => !m.extra)
@@ -75,10 +77,16 @@ export function sembrar({ dias = 14 } = {}) {
 
     const nDirs = rnd() > 0.7 ? 2 : 1
     for (let k = 0; k < nDirs; k++) {
+      const lid = pick(PILOTO)
+      const base = LOCALES.find((l) => l.id === lid)
+      // Alrededor de su local, dentro de unos dos kilómetros.
+      const jitter = () => (rnd() - 0.5) * 0.028
       S.agregarDireccion(p.persona_id, {
         alias: k === 0 ? 'Casa' : pick(['Oficina', 'Casa de mi mamá', 'Departamento']),
         calle: pick(CALLES), referencia: pick(REFERENCIAS), sector: pick(SECTORES),
-        ciudad: 'Quito', local_id: pick(PILOTO),
+        ciudad: 'Quito', local_id: lid,
+        lat: base && base.lat ? base.lat + jitter() : null,
+        lng: base && base.lng ? base.lng + jitter() : null,
       })
     }
     gente.push(S.personaPorId(p.persona_id))
@@ -104,9 +112,17 @@ export function sembrar({ dias = 14 } = {}) {
       const modalidad = rnd() > 0.28 ? 'domicilio' : 'retiro'
       const canal = rnd() > 0.45 ? 'llamada' : rnd() > 0.4 ? 'web' : 'whatsapp'
 
-      // Hora realista: almuerzo y sobre todo cena.
-      const hora = rnd() > 0.62 ? entre(18, 21) : entre(12, 17)
-      const t = new Date(fecha); t.setHours(hora, entre(0, 59), 0, 0)
+      // Hora realista: almuerzo y sobre todo cena. Los pedidos de HOY no pueden
+      // ser de una hora que todavía no llegó, o la comparación contra la semana
+      // pasada a la misma hora queda vacía y el tablero parece roto.
+      const ahora = new Date()
+      // Demo: si aún no abre o es temprano, el día de hoy igual se muestra
+      // avanzado hasta las 15:00, porque un tablero vacío no demuestra nada.
+      const tope = d === 0 ? Math.min(21, Math.max(15, ahora.getHours())) : 21
+      let hora = rnd() > 0.62 ? entre(18, 21) : entre(12, 17)
+      if (hora > tope) hora = entre(11, tope)
+      const t = new Date(fecha)
+      t.setHours(hora, hora === tope && d === 0 ? entre(0, Math.max(0, ahora.getMinutes())) : entre(0, 59), 0, 0)
 
       const nItems = entre(1, 3)
       const items = []
@@ -126,10 +142,15 @@ export function sembrar({ dias = 14 } = {}) {
       const dirs = persona.direcciones
       const dir = modalidad === 'domicilio' && dirs.length ? pick(dirs) : null
 
+      // Los últimos pedidos de hoy quedan en curso, y varios a domicilio ya en la
+      // calle, para que el mapa de la flota tenga algo que mostrar.
       const esHoy = d === 0
-      const estado = esHoy && i >= nPedidos - 3
-        ? pick(['recibido', 'horno', 'camino'])
-        : 'entregado'
+      let estado = 'entregado'
+      if (esHoy && i >= nPedidos - 8) {
+        estado = modalidad === 'domicilio'
+          ? pick(['camino', 'camino', 'camino', 'horno', 'recibido'])
+          : pick(['horno', 'recibido'])
+      }
 
       const pedido = S.registrarPedido({
         persona_id: persona.persona_id,
@@ -141,8 +162,26 @@ export function sembrar({ dias = 14 } = {}) {
         forma_pago: pick(['efectivo', 'tarjeta', 'tarjeta', 'transferencia']),
         creado_en: t.getTime(),
         minutos_entrega: estado === 'entregado' ? entre(22, 48) : null,
+        repartidor: modalidad === 'domicilio' ? pick(REPARTIDORES) : null,
+        salio_en: estado === 'camino' ? Date.now() - entre(4, 41) * 60000 : null,
+        rider: null,   // se calcula abajo, sobre la ruta local -> casa
         items,
       })
+
+      // La moto va en algún punto entre el local y la casa, según el tiempo que
+      // lleva fuera. Encima de la casa parecería que ya llegó y nadie abrió.
+      if (estado === 'camino' && dir && dir.lat != null) {
+        const sede = LOCALES.find((l) => l.id === local)
+        if (sede && sede.lat != null) {
+          const min = Math.round((Date.now() - pedido.salio_en) / 60000)
+          const f = Math.min(0.92, Math.max(0.08, min / 30))
+          S.estado().pedidos[pedido.pedido_id].rider = {
+            lat: sede.lat + (dir.lat - sede.lat) * f,
+            lng: sede.lng + (dir.lng - sede.lng) * f,
+            at: Date.now(),
+          }
+        }
+      }
 
       if (canal === 'llamada') {
         S.registrarConversacion({

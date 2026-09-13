@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as S from './store.js'
+import FleetMap from './FleetMap.jsx'
+import { Bullet, Dias, PorQueCambio, DondeSeVendeMas } from './graficos.jsx'
 import { money, num, hhmm, fecha, tasa, SIN_DATO, UMBRALES } from './format.js'
 
 /* ---------------------------------------------------------------- piezas */
@@ -449,3 +451,234 @@ export function Cliente({ id }) {
 }
 
 export { UMBRALES }
+
+/* ----------------------------------------------------------- Motorizados */
+
+export function Motorizados() {
+  const [sel, setSel] = useState(null)
+  const [tic, setTic] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => { if (!document.hidden) setTic((n) => n + 1) }, 20000)
+    return () => clearInterval(t)
+  }, [])
+  const entregas = useMemo(() => S.enRuta(), [tic])
+  const elegida = entregas.find((e) => e.pedido_id === sel) || null
+  const atrasadas = entregas.filter((e) => e.atrasado).length
+
+  if (entregas.length === 0) {
+    return (
+      <Card title="Ninguna moto en la calle">
+        <p className="d-empty">
+          Cuando un pedido salga del local, la moto aparece aquí y se puede seguir en el mapa.
+        </p>
+      </Card>
+    )
+  }
+
+  return (
+    <>
+      <div className="d-grid">
+        <div className="d-c12 d-stats">
+          <Stat label="Motos en la calle" value={num(entregas.length)} />
+          <Stat label="Pasadas de 35 minutos" value={num(atrasadas)}
+            foot={atrasadas ? 'Conviene avisar al cliente antes de que llame' : 'Todas dentro de lo normal'} />
+          <Stat label="En reparto" value={money(entregas.reduce((t, e) => t + e.total_cobrado, 0))} />
+          <Stat label="Más tiempo fuera"
+            value={entregas[0]?.minutos_fuera != null ? `${entregas[0].minutos_fuera} min` : SIN_DATO} />
+        </div>
+      </div>
+
+      <Card
+        title={elegida ? `Entrega ${elegida.pedido_id}` : 'Todas las entregas ahora'}
+        sub={elegida
+          ? `${elegida.repartidor} · salió hace ${elegida.minutos_fuera} min · ${S.localPorId(elegida.local_id)?.nombre}`
+          : 'Toca una moto en el mapa o una fila de abajo para seguir solo esa'}
+        tools={elegida && <button type="button" className="d-btn" onClick={() => setSel(null)}>Ver todas</button>}>
+        <FleetMap entregas={entregas} seleccion={sel} onSelect={setSel} />
+      </Card>
+
+      {elegida && (
+        <Card title="Esta entrega">
+          <table className="d-table">
+            <tbody>
+              <tr><td data-l="Cliente">{elegida.persona ? `${elegida.persona.nombre} ${elegida.persona.apellido}` : SIN_DATO}</td>
+                <td data-l="Teléfono" className="d-dim">{elegida.persona?.telefonos[0]?.telefono || SIN_DATO}</td></tr>
+              <tr><td data-l="Dirección">{elegida.destino?.calle || SIN_DATO}</td>
+                <td data-l="Sector" className="d-dim">{elegida.destino?.sector || SIN_DATO}</td></tr>
+              <tr><td data-l="Total">{money(elegida.total_cobrado)}</td>
+                <td data-l="Pago" className="d-dim">{elegida.forma_pago}</td></tr>
+            </tbody>
+          </table>
+          <p style={{ marginTop: 12 }}>
+            <a className="d-btn" href={`#/panel/pedidos/${elegida.pedido_id}`}>Ver el pedido completo</a>
+          </p>
+        </Card>
+      )}
+
+      <Card title="Quién está fuera">
+        <table className="d-table">
+          <thead><tr><th>Motorizado</th><th>Pedido</th><th>Local</th><th>Sector</th><th>Fuera</th><th className="d-num">Total</th></tr></thead>
+          <tbody>
+            {entregas.map((e) => (
+              <tr key={e.pedido_id}
+                onClick={() => setSel(e.pedido_id === sel ? null : e.pedido_id)}
+                className={e.pedido_id === sel ? 'd-row--on' : ''}
+                style={{ cursor: 'pointer' }}>
+                <td data-l="Motorizado">{e.repartidor || SIN_DATO}</td>
+                <td data-l="Pedido" className="d-dim">{e.pedido_id}</td>
+                <td data-l="Local">{S.localPorId(e.local_id)?.nombre}</td>
+                <td data-l="Sector" className="d-dim">{e.destino?.sector || SIN_DATO}</td>
+                <td data-l="Fuera">{e.minutos_fuera != null
+                  ? <span className={e.atrasado ? 'd-late' : ''}>{e.minutos_fuera} min</span> : SIN_DATO}</td>
+                <td data-l="Total" className="d-num">{money(e.total_cobrado)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </>
+  )
+}
+
+/* -------------------------------------------------------------- Resumen */
+
+// El párrafo se arma con una PLANTILLA, nunca con un modelo de lenguaje: un
+// tablero que redacta de una forma que nadie escribió puede equivocarse de una
+// forma que nadie predijo. Si una cifra no llega a su umbral, su oración entera
+// desaparece y las demás se reacomodan.
+function parrafo({ sem, cats, r, cs, motivo }) {
+  const f = []
+  f.push(`Esta semana entraron ${sem.n1} pedidos y se cobró ${money(sem.v1)}.`)
+  if (sem.n0 >= 5) {
+    const d = sem.v1 - sem.v0
+    f.push(`Son ${money(Math.abs(d))} ${d >= 0 ? 'más' : 'menos'} que la semana pasada, con los mismos ${sem.comunes} locales.`)
+  }
+  if (sem.n1) f.push(`Cada pedido dejó ${money(sem.t1)} en promedio.`)
+  if (cats.length) {
+    const tot = cats.reduce((t, c) => t + c.total, 0)
+    f.push(`De cada $10 que entró, ${money((10 * cats[0].total) / tot)} fueron de ${cats[0].categoria.toLowerCase()}.`)
+  }
+  if (cs.total) {
+    const t = tasa(cs.cerradas, cs.contestadas)
+    f.push(`Camila contestó ${cs.contestadas} de ${cs.total} llamadas y ${t.exacto ? `el ${t.texto} terminó` : `${cs.cerradas} terminaron`} en pedido.`)
+  }
+  if (motivo) f.push(`De las que no cerraron, lo que más se repitió fue que ${motivo.frase}, ${motivo.n} veces.`)
+  void r
+  return f.join(' ')
+}
+
+const FRASE_MOTIVO = {
+  'fuera de cobertura': 'estaban fuera de cobertura',
+  precio: 'les pareció caro',
+  'demora estimada': 'les pareció mucha la espera',
+  'producto no disponible': 'no teníamos el plato',
+  'solo consultaba': 'solo estaban preguntando',
+}
+
+export function Resumen({ local }) {
+  const serie = useMemo(() => S.serieDiaria(14, local), [local])
+  const sem = useMemo(() => S.semanaContraSemana(local), [local])
+  const hcs = useMemo(() => S.hoyContraLaSemanaPasada(local), [local])
+  const rango7 = useMemo(() => ({
+    desde: serie.dias[serie.dias.length - 7],
+    hasta: serie.dias[serie.dias.length - 1],
+    local: local || undefined,
+  }), [serie, local])
+  const cats = useMemo(() => S.ventaPorCategoria(rango7), [rango7])
+  const donde = useMemo(() => S.dondeSeVendeMas(rango7), [rango7])
+  const r = useMemo(() => S.resumen(rango7), [rango7])
+  const convs = useMemo(() => S.conversaciones(rango7), [rango7])
+
+  const cs = {
+    total: convs.length,
+    contestadas: convs.filter((c) => c.resultado !== 'no_contestada').length,
+    cerradas: convs.filter((c) => c.resultado === 'pedido').length,
+  }
+  const motivo = useMemo(() => {
+    const m = new Map()
+    for (const c of convs) if (c.motivo_no_cierre) m.set(c.motivo_no_cierre, (m.get(c.motivo_no_cierre) || 0) + 1)
+    const top = [...m.entries()].sort((a, b) => b[1] - a[1])[0]
+    return top ? { frase: FRASE_MOTIVO[top[0]] || top[0], n: top[1] } : null
+  }, [convs])
+
+  const totalCats = cats.reduce((t, c) => t + c.total, 0)
+
+  return (
+    <>
+      <section className="d-hero">
+        <p className="d-eyebrow">Los últimos 7 días · {local ? S.localPorId(local)?.nombre : 'todos los locales'}</p>
+        <p className="d-parrafo">{parrafo({ sem, cats, r, cs, motivo })}</p>
+      </section>
+
+      <div className="d-grid">
+        <Card span={5} title="Hoy contra el mismo día la semana pasada"
+          sub="A esta misma hora, para que la comparación sea justa">
+          <p className="d-hero__money" style={{ fontSize: 30 }}>{money(hcs.hoy)}</p>
+          <Bullet actual={hcs.hoy} base={hcs.base} />
+          <p className="d-chartfoot">
+            {hcs.base > 0
+              ? <>La marca negra es el mismo día la semana pasada: {money(hcs.base)}.{' '}
+                {hcs.hoy >= hcs.base ? 'Vamos arriba' : 'Vamos abajo'} por {money(Math.abs(hcs.hoy - hcs.base))}.</>
+              : 'Todavía no hay un mismo día de la semana pasada con el que comparar.'}
+          </p>
+        </Card>
+        <Card span={7} title="Los últimos 14 días" sub="Cuánto se cobró cada día">
+          <Dias dias={serie.dias} valores={serie.valores} />
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={6} title="¿Entraron más pedidos o cada pedido fue más grande?"
+          sub="Las dos cosas se arreglan de forma distinta, por eso se separan">
+          {sem.n0 >= 5
+            ? <PorQueCambio n0={sem.n0} t0={sem.t0} n1={sem.n1} t1={sem.t1} />
+            : <p className="d-empty">Hace falta una semana anterior con al menos 5 pedidos para comparar.</p>}
+        </Card>
+        <Card span={6} title="De cada $10 que entró, cuánto fue de qué">
+          {cats.length === 0 ? <p className="d-empty">Aún ningún plato vendido.</p> : (
+            <ul className="d-rank">
+              {cats.map((c) => (
+                <li key={c.categoria}>
+                  <div className="d-rank__row">
+                    <span className="d-rank__name">{c.categoria}</span>
+                    <span className="d-rank__bar"><i style={{ width: `${(c.total / cats[0].total) * 100}%` }} /></span>
+                    <span className="d-rank__val">{money((10 * c.total) / totalCats)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="d-chartfoot">De cada diez dólares cobrados en los últimos 7 días.</p>
+        </Card>
+      </div>
+
+      <div className="d-grid">
+        <Card span={6} title="Dónde se vende más de qué"
+          sub="Cada local comparado con los otros locales, no con un promedio que ya lo incluye">
+          <DondeSeVendeMas filas={donde} />
+        </Card>
+        <Card span={6} title="Los platos que más venden" sub="Los últimos 7 días">
+          <table className="d-table">
+            <thead><tr><th>Plato</th><th className="d-num">Unid.</th><th className="d-num">Total</th></tr></thead>
+            <tbody>
+              {S.topProductos(rango7, 10).map((t, i) => (
+                <tr key={i}>
+                  <td data-l="Plato">{t.nombre}</td>
+                  <td data-l="Unidades" className="d-num">{t.unidades}</td>
+                  <td data-l="Total" className="d-num">{money(t.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="d-chartfoot">
+            Con este volumen el orden de los primeros puestos todavía cambia de un día a otro.
+          </p>
+        </Card>
+      </div>
+
+      <Card title="Cuánto se cobró por local" sub="Los últimos 7 días">
+        <Rank rows={S.ventaPorLocal(rango7)} meta={(x) => `${x.pedidos} ped.`} />
+      </Card>
+    </>
+  )
+}

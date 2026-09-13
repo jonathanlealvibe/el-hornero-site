@@ -13,7 +13,7 @@
 import { LOCALES } from '../locales.js'
 import { dayKey } from './format.js'
 
-const LS = 'elhornero.panel.v2'
+const LS = 'elhornero.panel.v6'
 
 const vacio = () => ({
   personas: {}, telefonos: {}, vinculos: [], direcciones: {},
@@ -190,6 +190,9 @@ export function registrarPedido(p) {
     dia: dayKey(new Date(creado)),
     minutos_entrega: p.minutos_entrega ?? null,
     conversacion_id: p.conversacion_id || null,
+    repartidor: p.repartidor || null,
+    salio_en: p.salio_en || null,              // cuando la moto salio del local
+    rider: p.rider || null,                    // {lat,lng,at} ultima posicion conocida
   }
   for (const it of p.items || []) {
     d.items.push({
@@ -351,4 +354,148 @@ export function fichaParaAgente(telefono) {
     direcciones: p.direcciones.map((x) => ({ alias: x.alias, sector: x.sector })),
     ultimo: ultimo ? { dia: ultimo.dia, total: ultimo.total_cobrado, local: localPorId(ultimo.local_id)?.nombre } : null,
   }
+}
+
+// Los pedidos que están en la calle ahora mismo, con su moto.
+export function enRuta() {
+  const d = cargar()
+  return Object.values(d.pedidos)
+    // 'camino' en un pedido para llevar significa 'listo para retirar':
+    // no hay moto en la calle y no va en este mapa.
+    .filter((p) => p.estado === 'camino' && p.modalidad === 'domicilio')
+    .map((p) => {
+      const dir = p.direccion_id ? d.direcciones[p.direccion_id] : null
+      const min = p.salio_en ? Math.round((Date.now() - p.salio_en) / 60000) : null
+      return {
+        ...p,
+        destino: dir ? { lat: dir.lat, lng: dir.lng, sector: dir.sector, calle: dir.calle } : null,
+        minutos_fuera: min,
+        // 35 minutos es el umbral en que un pedido deja de ser normal y pasa a
+        // ser una llamada del cliente preguntando dónde está.
+        atrasado: min != null && min > 35,
+        persona: personaPorId(p.persona_id),
+      }
+    })
+    .sort((a, b) => (b.minutos_fuera || 0) - (a.minutos_fuera || 0))
+}
+
+// ---------------------------------------------------------------- resumen
+
+// La serie de los últimos N días, para el gráfico de columnas.
+export function serieDiaria(n = 14, local) {
+  const d = cargar()
+  const dias = []
+  const hoy = new Date()
+  for (let i = n - 1; i >= 0; i--) dias.push(dayKey(new Date(hoy.getTime() - i * 86400000)))
+  const suma = Object.fromEntries(dias.map((x) => [x, 0]))
+  const cuenta = Object.fromEntries(dias.map((x) => [x, 0]))
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado') continue
+    if (local && p.local_id !== local) continue
+    if (suma[p.dia] === undefined) continue
+    suma[p.dia] += p.total_cobrado
+    cuenta[p.dia]++
+  }
+  return { dias, valores: dias.map((x) => suma[x]), pedidos: dias.map((x) => cuenta[x]) }
+}
+
+// Dos bloques de 7 días, comparables solo sobre los locales que ya vendían en
+// ambos: si no, abrir un local se lee como crecimiento y no lo es.
+export function semanaContraSemana(local) {
+  const hoy = new Date()
+  const k = (i) => dayKey(new Date(hoy.getTime() - i * 86400000))
+  const esta = [], previa = []
+  for (let i = 0; i < 7; i++) esta.push(k(i))
+  for (let i = 7; i < 14; i++) previa.push(k(i))
+  const d = cargar()
+  const agrupa = (dias) => {
+    const out = {}
+    for (const p of Object.values(d.pedidos)) {
+      if (p.estado === 'cancelado') continue
+      if (local && p.local_id !== local) continue
+      if (!dias.includes(p.dia)) continue
+      const e = out[p.local_id] || { total: 0, n: 0 }
+      e.total += p.total_cobrado; e.n++
+      out[p.local_id] = e
+    }
+    return out
+  }
+  const A = agrupa(esta), B = agrupa(previa)
+  const comunes = Object.keys(A).filter((id) => B[id])
+  const sum = (o) => comunes.reduce((t, id) => t + o[id].total, 0)
+  const cnt = (o) => comunes.reduce((t, id) => t + o[id].n, 0)
+  const n1 = cnt(A), n0 = cnt(B)
+  return {
+    comunes: comunes.length,
+    n1, n0,
+    v1: sum(A), v0: sum(B),
+    t1: n1 ? sum(A) / n1 : 0,
+    t0: n0 ? sum(B) / n0 : 0,
+  }
+}
+
+// Hoy contra el MISMO día de la semana pasada, a la misma hora. Comparar un
+// lunes contra un domingo no dice nada en un restaurante.
+export function hoyContraLaSemanaPasada(local) {
+  const ahora = new Date()
+  const hoyK = dayKey(ahora)
+  const baseK = dayKey(new Date(ahora.getTime() - 7 * 86400000))
+  const d = cargar()
+  // El corte es la hora actual, o la del último pedido de hoy si ya es más
+  // tarde que el reloj (pasa con los datos de demostración). Comparar contra
+  // el día completo de la semana pasada siempre diría "vamos mal".
+  let corte = ahora.getHours() * 60 + ahora.getMinutes()
+  for (const p of Object.values(d.pedidos)) {
+    if (p.dia !== hoyK) continue
+    const t = new Date(p.creado_en)
+    corte = Math.max(corte, t.getHours() * 60 + t.getMinutes())
+  }
+  let hoy = 0, base = 0
+  for (const p of Object.values(d.pedidos)) {
+    if (p.estado === 'cancelado') continue
+    if (local && p.local_id !== local) continue
+    const t = new Date(p.creado_en)
+    const min = t.getHours() * 60 + t.getMinutes()
+    if (p.dia === hoyK) hoy += p.total_cobrado
+    else if (p.dia === baseK && min <= corte) base += p.total_cobrado
+  }
+  return { hoy, base }
+}
+
+// Dónde se vende más de qué: cada local contra los OTROS, no contra un promedio
+// que ya lo incluye. Se exige un mínimo de unidades para no llamar tendencia a
+// tres pedidos.
+export function dondeSeVendeMas(rango, { minUnidades = 12, minVeces = 1.4 } = {}) {
+  const its = itemsDe({ ...rango, local: undefined })
+  const porLocal = {}
+  for (const i of its) {
+    const L = (porLocal[i.local_id] = porLocal[i.local_id] || { total: 0, cat: {}, u: 0 })
+    const v = i.precio_unitario * i.cantidad
+    L.total += v; L.u += i.cantidad
+    L.cat[i.categoria] = (L.cat[i.categoria] || 0) + v
+  }
+  const ids = Object.keys(porLocal)
+  const filas = []
+  for (const id of ids) {
+    const yo = porLocal[id]
+    if (yo.u < minUnidades) continue
+    const otros = ids.filter((x) => x !== id)
+    if (!otros.length) continue
+    for (const cat of Object.keys(yo.cat)) {
+      const aqui = (yo.cat[cat] / yo.total) * 100
+      const totOtros = otros.reduce((t, x) => t + porLocal[x].total, 0)
+      const catOtros = otros.reduce((t, x) => t + (porLocal[x].cat[cat] || 0), 0)
+      if (!totOtros) continue
+      const ref = (catOtros / totOtros) * 100
+      if (ref < 3 || aqui < 8) continue
+      const veces = aqui / ref
+      if (veces < minVeces) continue
+      filas.push({
+        local: localPorId(id)?.nombre || id, categoria: cat, aqui, otros: ref,
+        veces: veces >= 2 ? 'el doble de' : 'bastante más',
+        orden: veces,
+      })
+    }
+  }
+  return filas.sort((a, b) => b.orden - a.orden).slice(0, 5)
 }

@@ -3,19 +3,21 @@ import { useRoute, go } from '../router.js'
 import * as S from './store.js'
 import { sembrar, haySemilla } from './seed.js'
 import { dayKey, hhmm, fechaLarga } from './format.js'
-import { Hoy, Pedidos, Ventas, Camila, Clientes, Cliente, PedidoFicha } from './screens.jsx'
+import { Hoy, Pedidos, Ventas, Camila, Clientes, Cliente, PedidoFicha, Motorizados, Resumen } from './screens.jsx'
 import './dash.css'
 
 const DESTINOS = [
   { key: 'hoy', label: 'Hoy' },
+  { key: 'resumen', label: 'Resumen' },
   { key: 'pedidos', label: 'Pedidos' },
-  { key: 'ventas', label: 'Ventas' },
+  { key: 'motos', label: 'Motos' },
   { key: 'camila', label: 'Camila' },
   { key: 'clientes', label: 'Clientes' },
 ]
 
 const PERIODOS = [
   { key: 'hoy', label: 'Hoy' },
+  { key: 'resumen', label: 'Resumen' },
   { key: 'ayer', label: 'Ayer' },
   { key: '7d', label: 'Últimos 7 días' },
   { key: 'mes', label: 'Este mes' },
@@ -69,6 +71,8 @@ export default function Panel() {
     switch (vista) {
       case 'pedidos': return <Pedidos rango={rango} q={q} />
       case 'ventas': return <Ventas rango={rango} q={q} periodoLabel={periodoLabel} />
+      case 'resumen': return <Resumen local={local} />
+      case 'motos': return <Motorizados />
       case 'camila': return <Camila rango={rango} />
       case 'clientes': return <Clientes q={q} />
       default: return <Hoy rango={rango} local={local} onLocal={setLocal} />
