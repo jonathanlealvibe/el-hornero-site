@@ -4,6 +4,7 @@
 import { MENU } from '../data.js'
 import { LOCALES } from '../locales.js'
 import * as S from './store.js'
+import { dayKey } from './format.js'
 
 // Generador determinista: la demo se ve igual cada vez que se abre.
 let semilla = 20260913
@@ -73,12 +74,90 @@ const desplazar = (sede, rumbo, metros) => {
   const b = (rumbo * Math.PI) / 180
   return { lat: sede.lat + (metros * Math.cos(b)) / 111320, lng: sede.lng + (metros * Math.sin(b)) / (111320 * Math.cos((sede.lat * Math.PI) / 180)) }
 }
+const metrosEntre = (a, b) => Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos((a.lat * Math.PI) / 180))
+
+// Las cinco sedes del centro: todo lo que sale a la calle en la demo sale de
+// aquí, para que el mapa compacto nunca tenga que alejarse a todo el valle.
+const CENTRO = ['floresta', 'gonzalez-suarez', 'republica-del-salvador', 'veintimilla', 'isla-floreana']
+const SECTORES_DE = {
+  floresta: ['La Floresta', 'Guápulo'], 'gonzalez-suarez': ['Bellavista', 'La Paz', 'González Suárez'],
+  'republica-del-salvador': ['La Carolina', 'Bellavista'], veintimilla: ['La Pradera', 'Santa Clara', 'La Mariscal'],
+  'isla-floreana': ['El Inca', 'Quito Tenis', 'El Batán'],
+}
+
+// El recuadro del centro donde viven todas las casas de la demo: 4.3 km de
+// norte a sur, lo que cabe en el mapa compacto a zoom 13.5. Una casa fuera
+// alejaría el encuadre y los pines volverían a fundirse.
+const ARENA = { latMin: -0.209, latMax: -0.17, lngMin: -78.512, lngMax: -78.462 }
+const enArena = (c) => c.lat >= ARENA.latMin && c.lat <= ARENA.latMax && c.lng >= ARENA.lngMin && c.lng <= ARENA.lngMax
+
+// --- la flota prevista: dónde estará cada moto en los próximos minutos ------
+// Una moto de demo recorre la recta local → casa en 30 min (enRuta() la pinta
+// entre el 8 % y el 92 % del camino); las dos que van tarde se quedan al 92 %.
+const VIAJE = 30 * 60000
+const SEDES_CENTRO = () => CENTRO.map((id) => LOCALES.find((l) => l.id === id))
+function posicionEn(e, t) {
+  if (t < e.salio) return null                       // todavía no salió
+  const f = e.tarde ? 0.92 : t - e.salio > VIAJE ? null : Math.min(0.92, Math.max(0.08, (t - e.salio) / VIAJE))
+  if (f == null) return null                         // ya llegó
+  return { lat: e.sede.lat + (e.casa.lat - e.sede.lat) * f, lng: e.sede.lng + (e.casa.lng - e.sede.lng) * f }
+}
+// Lo más cerca que va a pasar una moto que sale de `sede` hacia `casa` en
+// `salio` de todas las demás motos (`flota`: [{sede, casa, salio, tarde}]) y
+// de los otros locales, en los próximos 30 min. En metros: 420 m son los 30 px
+// a los que el mapa funde dos pines.
+export const HOLGURA_MIN = 420
+function holgura(sede, casa, salio, flota, desde) {
+  let d = 1e9
+  const yo = { sede, casa, salio }
+  for (let t = Math.max(desde, salio); t <= salio + VIAJE; t += 2 * 60000) {
+    const p = posicionEn(yo, t)
+    if (!p) continue
+    for (const e of flota) { const q = posicionEn(e, t); if (q) d = Math.min(d, metrosEntre(p, q)) }
+    for (const sd of SEDES_CENTRO()) if (sd.id !== sede.id) d = Math.min(d, metrosEntre(p, sd))
+  }
+  return d
+}
+// Una casa nueva a 1–1.5 km del local, dentro del recuadro: la que deja la
+// ruta entera más lejos de todo lo que hay y habrá en el mapa.
+function casaLibre(sede, flota, salio, desde = salio) {
+  let mejor = null, mejorD = -1
+  const giro = entre(0, 23) * 15
+  for (let r = 0; r < 360; r += 15) {
+    for (const metros of [1000, 1250, 1500]) {
+      const c = desplazar(sede, (r + giro) % 360, metros)
+      if (!enArena(c)) continue
+      const d = holgura(sede, c, salio, flota, desde)
+      if (d > mejorD) { mejorD = d; mejor = c }
+    }
+  }
+  return { casa: mejor || desplazar(sede, 90, 1000), holgura: mejorD }
+}
 
 const REPARTIDORES = ['Wilson', 'Édison', 'Kevin', 'Bryan', 'Darío', 'Alexis', 'Jefferson', 'Steeven', 'Marlon', 'Andrés', 'Fabián', 'Cristian', 'Luis', 'Paúl']
 
 const MOTIVOS = ['precio', 'fuera de cobertura', 'demora estimada', 'producto no disponible', 'solo consultaba']
 
 const vendibles = MENU.filter((m) => !m.extra)
+
+// Uno a tres platos del menú, con su tamaño y su precio cobrado.
+function armarItems() {
+  const items = []
+  let subtotal = 0
+  for (let k = 0, n = entre(1, 3); k < n; k++) {
+    const m = pick(vendibles)
+    const tam = m.sizes ? pick(m.sizes) : null
+    const precio = tam ? tam.p : m.price
+    const cant = rnd() > 0.85 ? 2 : 1
+    items.push({ nombre: m.name, categoria: m.cat, tamano: tam ? tam.t : null, cantidad: cant, precio_unitario: precio })
+    subtotal += precio * cant
+  }
+  return { items, subtotal }
+}
+
+// Las personas de la demo, leídas de la base: renovarDemo() no necesita
+// volver a sembrar para encontrarlas.
+export const gente = () => Object.values(S.estado().personas).filter((p) => p.estado === 'activa')
 
 export function sembrar({ dias = 14 } = {}) {
   // Todo en un bloque: una sola escritura al final y `sembrado` queda guardado
@@ -138,6 +217,7 @@ function sembrarDentro({ dias }) {
     const dow = fecha.getDay()
     const finde = dow === 5 || dow === 6 || dow === 0
     const nPedidos = finde ? entre(30, 42) : entre(16, 26)
+    const flotaPrevista = []        // las motos de hoy, para que las casas de cocina no crucen sus rutas
 
     for (let i = 0; i < nPedidos; i++) {
       const persona = pick(gente)
@@ -157,20 +237,7 @@ function sembrarDentro({ dias }) {
       const t = new Date(fecha)
       t.setHours(hora, hora === tope && d === 0 ? entre(0, Math.max(0, ahora.getMinutes())) : entre(0, 59), 0, 0)
 
-      const nItems = entre(1, 3)
-      const items = []
-      let subtotal = 0
-      for (let k = 0; k < nItems; k++) {
-        const m = pick(vendibles)
-        const tam = m.sizes ? pick(m.sizes) : null
-        const precio = tam ? tam.p : m.price
-        const cant = rnd() > 0.85 ? 2 : 1
-        items.push({
-          nombre: m.name, categoria: m.cat, tamano: tam ? tam.t : null,
-          cantidad: cant, precio_unitario: precio,
-        })
-        subtotal += precio * cant
-      }
+      const { items, subtotal } = armarItems()
       const dirs = persona.direcciones
       let dir = modalidad === 'domicilio' && dirs.length ? pick(dirs) : null
 
@@ -195,11 +262,30 @@ function sembrarDentro({ dias }) {
             ...desplazar(sede, moto.rumbo, moto.metros),
           })
           salio = Date.now() - moto.min * 60000
+          flotaPrevista.push({ sede, casa: dir, salio, tarde: moto.min > 35 })
           t.setTime(salio - entre(6, 10) * 60000)
         } else {
+          // Los seis tickets de cocina también son del centro y, si son a
+          // domicilio, tienen su casa cerca del local: cuando salgan a la calle
+          // (renovarDemo) entran al mismo mapa sin alejarlo.
           estado = pick(['horno', 'recibido'])
-          // Lo que está en marcha entró hace poco: un ticket de 150 minutos no existe.
-          t.setTime(Date.now() - entre(estado === 'recibido' ? 1 : 6, 22) * 60000)
+          local = CENTRO[k % CENTRO.length]
+          if (k >= MOTOS.length + CENTRO.length) modalidad = 'retiro'   // el sexto repite local: para llevar, sin moto
+          // Lo que está en marcha entró hace poco: un ticket de 150 minutos no
+          // existe. Recibido hace 1–4 min; en el horno desde hace 1–8 (entró a
+          // los 4 de recibido), en el mismo ritmo con que renovarDemo() los mueve.
+          t.setTime(Date.now() - (estado === 'recibido' ? entre(1, 4) : entre(5, 12)) * 60000)
+          if (modalidad === 'domicilio') {
+            const sede = LOCALES.find((l) => l.id === local)
+            const saldra = t.getTime() + 12 * 60000        // recibido → horno a los 4, a la calle a los 12
+            const { casa } = casaLibre(sede, flotaPrevista, saldra, Date.now())
+            dir = S.agregarDireccion(persona.persona_id, {
+              alias: pick(['Casa', 'Oficina', 'Departamento']),
+              calle: `${pick(CALLES)} N${20 + k}-${entre(100, 999)}`, referencia: pick(REFERENCIAS), sector: pick(SECTORES_DE[local]),
+              ciudad: 'Quito', local_id: local, ...casa,
+            })
+            flotaPrevista.push({ sede, casa, salio: saldra })
+          }
         }
       }
       const envio = modalidad === 'retiro' || subtotal >= 25 ? 0 : 2.5
@@ -213,6 +299,7 @@ function sembrarDentro({ dias }) {
         total_cobrado: Math.round((subtotal + envio) * 100) / 100,
         forma_pago: pick(['efectivo', 'tarjeta', 'tarjeta', 'transferencia']),
         creado_en: t.getTime(),
+        historial: estado === 'horno' ? { recibido: t.getTime(), horno: t.getTime() + 4 * 60000 } : undefined,
         minutos_entrega: estado === 'entregado' ? entre(22, 48) : null,
         repartidor: modalidad === 'domicilio' ? (moto ? REPARTIDORES[i % REPARTIDORES.length] : pick(REPARTIDORES)) : null,
         salio_en: salio,
@@ -230,6 +317,9 @@ function sembrarDentro({ dias }) {
           lat: sede.lat + (dir.lat - sede.lat) * f,
           lng: sede.lng + (dir.lng - sede.lng) * f,
           at: Date.now(), demo: true,
+          // Las dos que van tarde son parte de la historia: renovarDemo() las
+          // deja tarde (y las devuelve a sus minutos cuando pasan de 45).
+          ...(moto.min > 35 ? { tarde: true, tardeMin: moto.min } : {}),
         }
       }
 
@@ -277,3 +367,188 @@ function sembrarDentro({ dias }) {
 }
 
 export const haySemilla = () => !!S.estado().sembrado
+
+// Un pedido de demo nuevo, ahora mismo: en cocina o ya en la calle, con la
+// casa que eligió el que llama (casaLibre).
+function crearPedidoDemo({ local, modalidad, estado, creado, salio = null, repartidor = null, casa = null, ahora }) {
+  const personas = gente()
+  const sede = LOCALES.find((l) => l.id === local)
+  if (!personas.length || !sede) return null
+  const persona = pick(personas)
+  let dir = null
+  if (modalidad === 'domicilio' && casa) {
+    dir = S.agregarDireccion(persona.persona_id, {
+      alias: pick(['Casa', 'Oficina', 'Departamento']),
+      calle: `${pick(CALLES)} N${entre(20, 60)}-${entre(100, 999)}`, referencia: pick(REFERENCIAS), sector: pick(SECTORES_DE[local] || SECTORES),
+      ciudad: 'Quito', local_id: local, lat: casa.lat, lng: casa.lng,
+    })
+  }
+  const { items, subtotal } = armarItems()
+  const envio = modalidad === 'retiro' || subtotal >= 25 ? 0 : 2.5
+  const canal = rnd() > 0.45 ? 'llamada' : rnd() > 0.4 ? 'web' : 'whatsapp'
+  const historial = { recibido: creado }
+  if (estado === 'horno' || estado === 'camino') historial.horno = Math.min(creado + entre(3, 6) * 60000, salio || ahora)
+  if (estado === 'camino') historial.camino = salio || ahora
+  const enCalle = estado === 'camino' && modalidad === 'domicilio'
+  const pedido = S.registrarPedido({
+    persona_id: persona.persona_id, local_id: local, direccion_id: dir ? dir.direccion_id : null,
+    modalidad, canal, estado, subtotal, envio_cobrado: envio,
+    total_cobrado: Math.round((subtotal + envio) * 100) / 100,
+    forma_pago: pick(['efectivo', 'tarjeta', 'tarjeta', 'transferencia']),
+    creado_en: creado, historial,
+    repartidor: modalidad === 'domicilio' ? repartidor || pick(REPARTIDORES) : null,
+    salio_en: enCalle ? salio : null,
+    rider: null, items,
+  })
+  if (enCalle && dir) {
+    const f = Math.min(0.92, Math.max(0.08, (ahora - salio) / VIAJE))
+    S.estado().pedidos[pedido.pedido_id].rider = { lat: sede.lat + (dir.lat - sede.lat) * f, lng: sede.lng + (dir.lng - sede.lng) * f, at: ahora, demo: true }
+  }
+  if (canal === 'llamada') {
+    S.registrarConversacion({
+      persona_id: persona.persona_id, telefono: S.personaPorId(persona.persona_id)?.telefonos[0]?.telefono,
+      local_id: local, canal: 'llamada', inicio: creado - entre(120, 300) * 1000, duracion_s: entre(95, 260),
+      resultado: 'pedido', cedula_capturada: !!persona.cedula, pedido_id: pedido.pedido_id,
+    })
+  }
+  return { pedido, dir }
+}
+
+// Mantiene viva la demo mientras la pestaña sigue abierta (se llama al cargar
+// y en cada refresco de 30 s), sin tocar nada que Jon haya movido a mano:
+//  · una moto que lleva más de 30 min llega (entregada) y, para que sigan
+//    siendo diez, sale otra con el mismo repartidor y del mismo local (o del
+//    local del centro que lleva más tiempo sin mandar una), recién salida y
+//    a una casa nueva cuya ruta no se cruza con ninguna otra moto; si en este
+//    momento no hay ruta limpia, espera al siguiente refresco;
+//  · las dos que van tarde a propósito siguen tarde: cuando pasan de 45 min
+//    vuelven a sus 37 y 43;
+//  · en cocina, un ticket recibido pasa al horno a los 4 min y sale a los 8
+//    si hay sitio en el mapa y su ruta está limpia (espera hasta 16, o 24 si
+//    de su local acaba de salir otra, y entonces sale a una casa nueva); un
+//    pedido para llevar queda listo a los
+//    8 y se entrega a los 15; si quedan menos de tres tickets entra uno nuevo.
+// Con más de diez motos, las que ya llevan 26 min llegan un poco antes.
+export function renovarDemo({ ahora = Date.now() } = {}) {
+  const db = S.estado()
+  if (!db.sembrado) return null
+  const hoy = dayKey(new Date(ahora))
+  const min = (ts) => (ahora - (ts || ahora)) / 60000
+  const sedeDe = (p) => LOCALES.find((l) => l.id === p.local_id)
+  const dirDe = (p) => (p.direccion_id ? db.direcciones[p.direccion_id] : null)
+  const vivos = Object.values(db.pedidos).filter((p) => p.dia === hoy && !p.manual && p.origen !== 'sitio' && ['recibido', 'horno', 'camino'].includes(p.estado))
+  const esMoto = (p) => p.estado === 'camino' && p.modalidad === 'domicilio' && p.rider?.demo
+  const motos = vivos.filter(esMoto)
+  const limite = motos.length > 10 ? 26 : 30
+  const llegaron = motos.filter((p) => !p.rider.tarde && min(p.salio_en) > limite)
+  const tardes = motos.filter((p) => p.rider.tarde && min(p.salio_en) > 45)
+  const alHorno = vivos.filter((p) => p.estado === 'recibido' && min(p.creado_en) > 4)
+  const enHorno = (p) => min(p.historial?.horno || p.creado_en)
+  const listos = vivos.filter((p) => p.estado === 'horno' && enHorno(p) > 8)
+  const retirados = vivos.filter((p) => p.estado === 'camino' && p.modalidad === 'retiro' && min(p.historial?.camino || p.creado_en) > 15)
+  const faltaCocina = vivos.filter((p) => p.estado === 'recibido' || p.estado === 'horno').length - listos.length < 3
+  let enCalle = motos.length - llegaron.length
+  if (!llegaron.length && !tardes.length && !alHorno.length && !listos.length && !retirados.length && !faltaCocina && enCalle >= 10) return { cambios: 0 }
+
+  let cambios = 0
+  S.enBloque(() => {
+    // De qué local salió una moto hace poco: la siguiente de ahí espera.
+    const ultimaSalida = {}
+    for (const p of motos) if (!llegaron.includes(p)) ultimaSalida[p.local_id] = Math.max(ultimaSalida[p.local_id] || 0, p.salio_en || 0)
+    const recien = (local) => ultimaSalida[local] && min(ultimaSalida[local]) < 12
+    const enUso = new Set(motos.filter((p) => !llegaron.includes(p)).map((p) => p.repartidor))
+    const nombreLibre = (preferido) => (preferido && !enUso.has(preferido) ? preferido : REPARTIDORES.find((n) => !enUso.has(n)) || pick(REPARTIDORES))
+
+    for (const p of tardes) {
+      const salio = ahora - (p.rider.tardeMin || 37) * 60000
+      const delta = salio - p.salio_en
+      p.salio_en = salio; p.creado_en += delta
+      for (const k of Object.keys(p.historial || {})) p.historial[k] += delta
+      p.rider = { ...p.rider, at: ahora }
+      cambios++
+    }
+    for (const p of alHorno) { p.estado = 'horno'; p.historial = { ...(p.historial || {}), horno: ahora }; cambios++ }
+    for (const p of retirados) {
+      p.estado = 'entregado'; p.historial = { ...(p.historial || {}), entregado: ahora }
+      p.minutos_entrega = Math.max(1, Math.round((ahora - p.creado_en) / 60000)); cambios++
+    }
+    const liberados = []
+    for (const p of llegaron) {
+      // Llegó hace un rato (en el mapa la moto se ve llegar hacia los 28 min).
+      const llego = Math.min(ahora, p.salio_en + entre(16, 26) * 60000)
+      p.estado = 'entregado'; p.historial = { ...(p.historial || {}), entregado: llego }
+      p.minutos_entrega = Math.max(1, Math.round((llego - p.creado_en) / 60000))
+      const casa = dirDe(p)
+      if (casa?.lat != null) p.rider = { lat: casa.lat, lng: casa.lng, at: llego, demo: true }
+      liberados.push({ local: p.local_id, repartidor: p.repartidor })
+      cambios++
+    }
+
+    // La flota que sigue en el mapa (y la que va a entrar desde cocina).
+    const flota = []
+    for (const p of motos) if (!llegaron.includes(p) && dirDe(p)?.lat != null) flota.push({ sede: sedeDe(p), casa: dirDe(p), salio: p.salio_en, tarde: !!p.rider.tarde })
+    for (const p of vivos) if (['recibido', 'horno'].includes(p.estado) && p.modalidad === 'domicilio' && dirDe(p)?.lat != null) flota.push({ sede: sedeDe(p), casa: dirDe(p), salio: ahora + Math.max(0, 8 - enHorno(p)) * 60000, ticket: p })
+
+    // Cocina → calle. Para llevar: listo. A domicilio: sale si hay sitio y la
+    // ruta está limpia; si lleva más de 16 min esperando, sale igual a una casa nueva.
+    for (const p of listos) {
+      if (p.modalidad !== 'domicilio') { p.estado = 'camino'; p.historial = { ...(p.historial || {}), camino: ahora }; cambios++; continue }
+      const sede = sedeDe(p)
+      if (!sede || sede.lat == null) continue
+      const otras = flota.filter((e) => e.ticket !== p)
+      let casa = dirDe(p)
+      const forzado = enHorno(p) > 16
+      if (enCalle > 10 && !forzado) continue
+      if (recien(p.local_id) && enHorno(p) <= 24) continue      // de ese local acaba de salir una: dos juntas se pisan
+      if (holgura(sede, casa, ahora, otras, ahora) < HOLGURA_MIN) {
+        if (!forzado) continue
+        const libre = casaLibre(sede, otras, ahora)
+        const dir = S.agregarDireccion(p.persona_id, { alias: 'Casa', calle: `${pick(CALLES)} N${entre(20, 60)}-${entre(100, 999)}`, referencia: pick(REFERENCIAS), sector: pick(SECTORES_DE[p.local_id] || SECTORES), ciudad: 'Quito', local_id: p.local_id, ...libre.casa })
+        p.direccion_id = dir.direccion_id; casa = dir
+      }
+      p.estado = 'camino'; p.historial = { ...(p.historial || {}), camino: ahora }
+      p.salio_en = ahora; ultimaSalida[p.local_id] = ahora
+      p.repartidor = nombreLibre(p.repartidor); enUso.add(p.repartidor)
+      p.rider = { lat: sede.lat, lng: sede.lng, at: ahora, demo: true }
+      const mio = flota.find((e) => e.ticket === p); if (mio) { mio.salio = ahora; mio.casa = casa; delete mio.ticket }
+      enCalle++; cambios++
+    }
+
+    // Reponer hasta diez: primero el local del que acaba de llegar una moto,
+    // luego el que lleva más tiempo sin mandar una. Sin ruta limpia, se espera.
+    const candidatos = () => [...liberados.map((l) => l.local), ...[...CENTRO].sort((a, b) => (ultimaSalida[a] || 0) - (ultimaSalida[b] || 0))].filter((l, i, arr) => arr.indexOf(l) === i)
+    while (enCalle < 10) {
+      let hecho = false
+      for (const local of candidatos()) {
+        if (recien(local)) continue
+        const sede = LOCALES.find((l) => l.id === local)
+        const salio = ahora - entre(3, 6) * 60000
+        const { casa, holgura: h } = casaLibre(sede, flota, salio, ahora)
+        if (h < HOLGURA_MIN) continue
+        const lib = liberados.find((l) => l.local === local) || liberados[0]
+        const repartidor = nombreLibre(lib?.repartidor)
+        const nuevo = crearPedidoDemo({ local, modalidad: 'domicilio', estado: 'camino', creado: salio - entre(6, 10) * 60000, salio, repartidor, casa, ahora })
+        if (!nuevo) continue
+        if (lib) liberados.splice(liberados.indexOf(lib), 1)
+        enUso.add(repartidor); ultimaSalida[local] = salio
+        flota.push({ sede, casa, salio }); enCalle++; cambios++; hecho = true
+        break
+      }
+      if (!hecho) break
+    }
+
+    if (faltaCocina) {
+      const modalidad = rnd() > 0.28 ? 'domicilio' : 'retiro'
+      // El local del centro con menos tickets a domicilio esperando: dos del
+      // mismo local saldrían juntos.
+      const pendientes = (l) => flota.filter((e) => e.ticket && e.sede.id === l).length
+      const local = [...CENTRO].sort((a, b) => pendientes(a) - pendientes(b) || rnd() - 0.5)[0]
+      const creado = ahora - entre(1, 3) * 60000
+      const sede = LOCALES.find((l) => l.id === local)
+      const casa = modalidad === 'domicilio' ? casaLibre(sede, flota, creado + 12 * 60000, ahora).casa : null
+      const nuevo = crearPedidoDemo({ local, modalidad, estado: 'recibido', creado, casa, ahora })
+      if (nuevo) { if (casa) flota.push({ sede, casa, salio: creado + 12 * 60000 }); cambios++ }
+    }
+  })
+  return { cambios, entregadas: llegaron.length + retirados.length }
+}

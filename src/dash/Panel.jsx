@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRoute, go } from '../router.js'
 import * as S from './store.js'
-import { sembrar, haySemilla } from './seed.js'
+import { sembrar, haySemilla, renovarDemo } from './seed.js'
 import { hhmm, fechaLarga, dayKey } from './format.js'
 import { PERIODOS, rangoDe, usarFiltros, irCon, hrefPanel } from './nav.js'
 import { useDormido } from './motion.js'
@@ -50,6 +50,7 @@ export default function Panel() {
       const s = S.estado().sembrado
       const vieja = !haySemilla() || dayKey(new Date(s)) !== dayKey() || Date.now() - s > 3 * 3600000
       if (vieja) sembrar({ dias: 14 })
+      else renovarDemo()          // la pestaña volvió: las motos que ya llegaron se entregan y salen otras
     } else importarPedidosDelSitio()
     setListo(true)
   }, [datos])
@@ -60,7 +61,7 @@ export default function Panel() {
   useEffect(() => {
     const marca = () => { toque.current = Date.now() }
     for (const ev of ['scroll', 'pointerdown']) window.addEventListener(ev, marca, { passive: true })
-    const refrescar = () => { if (datos === 'vivo') importarPedidosDelSitio(); S.refrescar(); setUltimo(Date.now()) }
+    const refrescar = () => { if (datos === 'vivo') importarPedidosDelSitio(); else renovarDemo(); S.refrescar(); setUltimo(Date.now()) }
     const t = setInterval(() => {
       if (document.hidden) return
       if (Date.now() - toque.current < 800) return

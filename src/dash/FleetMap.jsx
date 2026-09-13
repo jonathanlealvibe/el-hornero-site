@@ -164,9 +164,14 @@ export default function FleetMap({
     if (!m || !L || !pts.length) return
     const b = L.latLngBounds(pts)
     const movil = esMovil()
-    const opts = { paddingTopLeft: [movil ? 28 : 56, movil ? 28 : 56], paddingBottomRight: [movil ? 28 : 56, movil && seleccion ? 120 : movil ? 28 : 56], maxZoom }
+    // La tira compacta no tiene controles ni fichas encima: con 32 px de margen
+    // le cabe medio paso más de zoom.
+    const pad = movil ? 28 : compacto ? 32 : 56
+    const opts = { paddingTopLeft: [pad, pad], paddingBottomRight: [pad, movil && seleccion ? 120 : pad], maxZoom }
     programatico.current = true
-    if (anim && !reduce() && !compacto) m.flyToBounds(b, { ...opts, duration: 0.65, easeLinearity: 0.25 })
+    // En la tira compacta el conjunto de motos cambia cada pocos minutos
+    // (una llega, sale otra): el reencuadre se desliza en vez de saltar.
+    if (anim && !reduce()) m.flyToBounds(b, { ...opts, duration: compacto ? 0.5 : 0.65, easeLinearity: 0.25 })
     else m.fitBounds(b, { ...opts, animate: false })
     m.once('moveend', () => { programatico.current = false })
     setMovido(false)
