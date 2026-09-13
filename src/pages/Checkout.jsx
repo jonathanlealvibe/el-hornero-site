@@ -7,8 +7,9 @@ const money = (n) => '$' + n.toFixed(2)
 export default function Checkout({ lines, mode: initialMode, subtotal, tax: _tax, onPlaced }) {
   const [mode, setMode] = useState(initialMode || 'delivery')
   const shipping = mode === 'pickup' || subtotal === 0 || subtotal >= 25 ? 0 : 2.5
-  const tax = subtotal * 0.15
-  const total = subtotal + shipping + tax
+  // El menú oficial imprime precios con impuestos incluidos: no se vuelve a sumar.
+  const tax = subtotal - subtotal / 1.15
+  const total = subtotal + shipping
   const [f, setF] = useState({ nombre: '', telefono: '', cedula: '', direccion: '', referencia: '', sector: '', pago: 'efectivo', cambio: '', factura: 'consumidor_final', correo: '' })
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -30,7 +31,7 @@ export default function Checkout({ lines, mode: initialMode, subtotal, tax: _tax
   }
 
   return (
-    <section className="page">
+    <section className="page-doc">
       <a href="#/" className="back-link">← Volver al menú</a>
       <h2 className="page-title">Confirma tu pedido</h2>
       <div className="checkout-grid">
@@ -70,7 +71,7 @@ export default function Checkout({ lines, mode: initialMode, subtotal, tax: _tax
           {lines.map((l) => <div key={l.id} className="row"><span>{l.qty} × {l.name}</span><b>{money(l.price * l.qty)}</b></div>)}
           <div className="row muted"><span>Subtotal</span><span>{money(subtotal)}</span></div>
           <div className="row muted"><span>Envío</span><span>{shipping === 0 ? 'Gratis' : money(shipping)}</span></div>
-          <div className="row muted"><span>IVA 15%</span><span>{money(tax)}</span></div>
+          <div className="row muted"><span>IVA 15% incluido</span><span>{money(tax)}</span></div>
           <div className="row total"><span>Total</span><span>{money(total)}</span></div>
           <p className="hint">{mode === 'pickup' ? 'Retiro en el local que elijas.' : 'Entrega estimada: 30 minutos.'}</p>
         </aside>

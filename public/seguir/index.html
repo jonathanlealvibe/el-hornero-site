@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Siga su pedido · El Hornero</title>
+<meta name="description" content="Vea a su motorizado en el mapa en vivo y a qué hora llega.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="El Hornero">
+<meta property="og:title" content="Siga su pedido · El Hornero">
+<meta property="og:description" content="Vea a su motorizado en el mapa en vivo y a qué hora llega.">
+<meta property="og:image" content="https://elhornero.conciergeai.space/assets/og-seguir.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://elhornero.conciergeai.space/seguir/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Siga su pedido · El Hornero">
+<meta name="twitter:description" content="Vea a su motorizado en el mapa en vivo y a qué hora llega.">
+<meta name="twitter:image" content="https://elhornero.conciergeai.space/assets/og-seguir.png">
+<style>body{margin:0;font:15px -apple-system,system-ui,sans-serif;color:#1D1D1B;display:grid;place-items:center;height:100vh}</style>
+<script>
+  // The order rides in the fragment: #<id>.<payload>. A fragment never reaches the server,
+  // so the customer's data stays out of logs and out of Meta's preview crawler.
+  (function () {
+    var h = (location.hash || '').replace(/^#/, '');
+    if (!h) { location.replace('/'); return; }
+    var i = h.indexOf('.');
+    var id = i > -1 ? h.slice(0, i) : h;
+    var d = i > -1 ? h.slice(i + 1) : '';
+    location.replace('/#/pedido/' + id + (d ? '?d=' + d : ''));
+  })();
+</script>
+</head>
+<body><p>Abriendo su pedido…</p></body>
+</html>

@@ -12,8 +12,8 @@ export default function Pay({ id, packed }) {
 
   useEffect(() => { getOrder(id, packed).then((r) => (r ? setO(r) : setMissing(true))) }, [id, packed])
 
-  if (missing) return <section className="page"><a href="#/" className="back-link">← Ir al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
-  if (!o) return <section className="page"><p>Cargando…</p></section>
+  if (missing) return <section className="page-doc"><a href="#/" className="back-link">← Ir al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
+  if (!o) return <section className="page-doc"><p>Cargando…</p></section>
 
   const digits = f.num.replace(/\D/g, '')
   const ready = digits.length >= 15 && /^\d{2}\/\d{2}$/.test(f.exp) && f.cvv.length >= 3 && f.nom.trim().length > 2
@@ -29,7 +29,7 @@ export default function Pay({ id, packed }) {
 
   if (step === 'done' || o.paid) {
     return (
-      <section className="page pay">
+      <section className="page-doc pay">
         <div className="pay-card ok">
           <div className="pay-check">✓</div>
           <h2>Pago aprobado</h2>
@@ -43,7 +43,7 @@ export default function Pay({ id, packed }) {
   }
 
   return (
-    <section className="page pay">
+    <section className="page-doc pay">
       <div className="pay-card">
         <div className="pay-head">
           <span className="pay-brand">el Hornero</span>

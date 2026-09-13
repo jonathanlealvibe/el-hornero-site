@@ -22,9 +22,9 @@ export default function Driver({ id, packed }) {
   const delivered = async () => { stop(); const r = await updateOrder(id, { status: 'entregado', deliveredAt: Date.now() }); setO({ ...o, ...r }) }
   useEffect(() => () => stop(), [])
 
-  if (!o) return <section className="page"><p>Cargando pedido {id}…</p></section>
+  if (!o) return <section className="page-doc"><p>Cargando pedido {id}…</p></section>
   return (
-    <section className="page driver">
+    <section className="page-doc driver">
       <span className="eyebrow">Repartidor · El Hornero</span>
       <h2 className="page-title">Pedido {id}</h2>
       <div className="card">

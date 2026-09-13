@@ -7,6 +7,12 @@ import Order from './pages/Order.jsx'
 import Driver from './pages/Driver.jsx'
 import Pay from './pages/Pay.jsx'
 
+const defaultSize = (m) => (m.sizes ? (m.sizes.find((z) => z.t === 'M') || m.sizes[0]).t : null)
+const priceOf = (m, pick) => {
+  if (!m.sizes) return m.price
+  const t = pick || defaultSize(m)
+  return m.sizes.find((z) => z.t === t)?.p ?? m.price
+}
 const money = (n) => '$' + n.toFixed(2)
 const CART_KEY = 'elhornero.cart'
 
@@ -25,6 +31,8 @@ function Home() {
   const [cart, setCart] = useState(loadCart)
   const [mode, setMode] = useState('delivery')
   const [cartOpen, setCartOpen] = useState(false)
+  const [sizePick, setSizePick] = useState({})
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cart)) } catch { /* ignore */ }
@@ -48,9 +56,15 @@ function Home() {
     [searching, cat, q],
   )
 
-  const add = (id) => {
-    setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }))
-    setCartOpen(true)
+  // Key = id, or id::TAMANO when the dish is sold by size.
+  const add = (id, size) => {
+    const key = size ? `${id}::${size}` : id
+    setCart((c) => ({ ...c, [key]: (c[key] || 0) + 1 }))
+    const m = MENU.find((x) => x.id === id)
+    setToast({ name: m ? m.name + (size ? ` ${size}` : '') : '', at: Date.now() })
+    // Opening the drawer on every tap closes the menu in the customer's face.
+    // Only the first item of the session opens it; after that, a nudge is enough.
+    setCartOpen((open) => open || Object.keys(cart).length === 0)
   }
   const bump = (id, d) => {
     setCart((c) => {
@@ -62,16 +76,26 @@ function Home() {
     })
   }
 
-  const cartLines = Object.keys(cart).map((id) => {
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3200)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const cartLines = Object.keys(cart).map((key) => {
+    const [id, size] = key.split('::')
     const m = MENU.find((x) => x.id === id)
-    return { id, name: m.name, qty: cart[id], total: m.price * cart[id] }
-  })
+    if (!m) return null                       // the dish left the menu: drop the line, do not crash
+    const unit = size && m.sizes ? (m.sizes.find((z) => z.t === size)?.p ?? m.price) : m.price
+    return { id: key, name: m.name + (size ? ` · ${size}` : ''), qty: cart[key], total: unit * cart[key] }
+  }).filter(Boolean)
   const cartCount = cartLines.reduce((a, l) => a + l.qty, 0)
   const subtotal = cartLines.reduce((t, l) => t + l.total, 0)
   const isPickup = mode === 'pickup'
   const ship = isPickup || subtotal === 0 || subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE
-  const tax = subtotal * IVA
-  const total = subtotal + ship + tax
+  // Los precios del menú ya incluyen IVA: aquí solo se DESGLOSA el impuesto contenido.
+  const tax = subtotal - subtotal / (1 + IVA)
+  const total = subtotal + ship
 
   const sectionTitle = searching ? 'Resultados' : cat || 'Menú'
   const freeHint = isPickup
@@ -177,15 +201,27 @@ function Home() {
             {items.map((m) => (
               <article key={m.id} className="card">
                 <div className="card-media">
-                  <span className="shot">{m.shot}</span>
+                  <span className="shot">{m.name}</span>
                   {m.tag && <span className="tag">{m.tag}</span>}
                 </div>
                 <div className="card-body">
                   <h3>{m.name}</h3>
                   <p>{m.desc}</p>
+                  {m.sizes && (
+                    <div className="sizes" role="group" aria-label={`Tamaño de ${m.name}`}>
+                      {m.sizes.map((z) => (
+                        <button
+                          key={z.t}
+                          type="button"
+                          className={'size-chip' + ((sizePick[m.id] || defaultSize(m)) === z.t ? ' on' : '')}
+                          onClick={() => setSizePick((p) => ({ ...p, [m.id]: z.t }))}
+                        >{z.t}</button>
+                      ))}
+                    </div>
+                  )}
                   <div className="card-row">
-                    <span className="price">{money(m.price)}</span>
-                    <button type="button" className="btn-add" onClick={() => add(m.id)}>Agregar</button>
+                    <span className="price">{money(priceOf(m, sizePick[m.id]))}</span>
+                    <button type="button" className="btn-add" onClick={() => add(m.id, m.sizes ? (sizePick[m.id] || defaultSize(m)) : null)}>Agregar</button>
                   </div>
                 </div>
               </article>
@@ -265,15 +301,33 @@ function Home() {
           )}
         </div>
 
+        {!isPickup && subtotal > 0 && (
+          <div className="freebar">
+            {subtotal >= FREE_DELIVERY_OVER
+              ? <b>¡Envío gratis conseguido!</b>
+              : <span>Le faltan <b>{money(FREE_DELIVERY_OVER - subtotal)}</b> para el envío gratis</span>}
+            <span className="freebar-track">
+              <span className="freebar-fill" style={{ width: Math.min(100, (subtotal / FREE_DELIVERY_OVER) * 100) + '%' }} />
+            </span>
+          </div>
+        )}
+
         <div className="drawer-totals">
           <span className="row">Subtotal <span>{money(subtotal)}</span></span>
           <span className="row">Envío <span>{ship === 0 ? 'Gratis' : money(ship)}</span></span>
-          <span className="row">IVA 15% <span>{money(tax)}</span></span>
+          <span className="row muted">IVA 15% incluido <span>{money(tax)}</span></span>
           <span className="row total">Total <span>{money(total)}</span></span>
           <button type="button" className="btn-pay" disabled={cartLines.length === 0} onClick={() => { try { localStorage.setItem('elhornero.mode', mode) } catch { /* ignore */ } setCartOpen(false); go('/checkout') }}>Continuar al pago</button>
           <span className="hint">{freeHint}</span>
         </div>
       </aside>
+
+      {toast && (
+        <button type="button" className="toast" onClick={() => { setToast(null); setCartOpen(true) }}>
+          <span>{toast.name} agregado</span>
+          <b>Ver mi pedido · {money(subtotal)}</b>
+        </button>
+      )}
     </div>
   )
 }
@@ -286,9 +340,9 @@ function CheckoutRoute() {
   const lines = Object.keys(cart).map((id) => { const m = MENU.find((x) => x.id === id); return { id, name: m.name, qty: cart[id], price: m.price } })
   const subtotal = lines.reduce((t, l) => t + l.price * l.qty, 0)
   const shipping = mode === 'pickup' || subtotal === 0 || subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE
-  const tax = subtotal * IVA
-  if (lines.length === 0) return <section className="page"><a href="#/" className="back-link">← Volver al menú</a><p>Tu pedido está vacío.</p></section>
-  return <Checkout lines={lines} mode={mode} subtotal={subtotal} shipping={shipping} tax={tax} total={subtotal + shipping + tax}
+  const tax = subtotal - subtotal / (1 + IVA)
+  if (lines.length === 0) return <section className="page-doc"><a href="#/" className="back-link">← Volver al menú</a><p>Tu pedido está vacío.</p></section>
+  return <Checkout lines={lines} mode={mode} subtotal={subtotal} shipping={shipping} tax={tax} total={subtotal + shipping}
     onPlaced={() => { try { localStorage.removeItem(CART_KEY) } catch { /* ignore */ } }} />
 }
 

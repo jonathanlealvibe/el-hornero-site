@@ -2,27 +2,34 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>el Hornero</title>
+<style>body{margin:0;font:15px -apple-system,system-ui,sans-serif;color:#1D1D1B;display:grid;place-items:center;height:100vh}</style>
 <script>
-  // Clean URLs -> hash routes, so WhatsApp templates can use a fixed base URL.
-  //   /p/<payload>   -> #/pago/<id>?d=<payload>
-  //   /s/<payload>   -> #/pedido/<id>?d=<payload>
-  //   /r/<payload>   -> #/repartidor/<id>?d=<payload>
+  // Fallback router for shared links. The current links live at /seguir/ /pagar/ /entrega/
+  // with the order in the fragment, and those are real files that answer 200. This page only
+  // catches the leftovers:
+  //   /s/<id>.<payload>      old links already sent by WhatsApp  -> #/pedido/<id>?d=…
+  //   /seguir/<id>.<payload> someone dropped the # while copying -> #/pedido/<id>?d=…
+  //   /seguir/#<id>.<payload> a host that does not serve the folder index
   (function () {
-    var MAP = { p: 'pago', s: 'pedido', r: 'repartidor' };
+    var MAP = {
+      p: 'pago', s: 'pedido', r: 'repartidor',
+      pagar: 'pago', seguir: 'pedido', entrega: 'repartidor'
+    };
     var seg = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
     var key = MAP[seg[0]];
-    if (key && seg[1]) {
-      var rest = seg.slice(1).join('/');
-      var i = rest.indexOf('.');            // <id>.<payload>
-      var id = i > -1 ? rest.slice(0, i) : rest;
-      var d = i > -1 ? rest.slice(i + 1) : '';
-      location.replace('/#/' + key + '/' + id + (d ? '?d=' + d : ''));
-      return;
-    }
-    location.replace('/');
+    if (!key) { location.replace('/'); return; }
+
+    var rest = seg.slice(1).join('/') || (location.hash || '').replace(/^#/, '');
+    if (!rest) { location.replace('/'); return; }
+
+    var i = rest.indexOf('.');                 // <id>.<payload>
+    var id = i > -1 ? rest.slice(0, i) : rest;
+    var d = i > -1 ? rest.slice(i + 1) : '';
+    location.replace('/#/' + key + '/' + id + (d ? '?d=' + d : ''));
   })();
 </script>
 </head>
-<body></body>
+<body><p>Abriendo su pedido…</p></body>
 </html>
