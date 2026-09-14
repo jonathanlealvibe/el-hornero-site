@@ -732,8 +732,9 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
   -webkit-mask-image:radial-gradient(circle closest-side, #000 79%, transparent 82%); mask-image:radial-gradient(circle closest-side, #000 79%, transparent 82%); }
 .dash::after{ content:""; position:fixed; z-index:-1; pointer-events:none; inset:0;
   background:radial-gradient(ellipse 60% 55% at 50% 42%, rgba(31,154,85,.07), transparent 70%), radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, rgba(0,0,0,.5) 100%); }
-.dash.dash--claro::before{ filter:saturate(.7); opacity:.045; }
-.dash.dash--claro::after{ background:radial-gradient(ellipse 60% 55% at 50% 42%, rgba(14,124,65,.05), transparent 70%); }
+/* Tema claro: el logo se pinta en verde claro (monocromo) para que se lea sobre el lienzo, como la marca oscura del tema oscuro. */
+.dash.dash--claro::before{ filter:grayscale(1) sepia(1) hue-rotate(85deg) saturate(2.4) brightness(1.02); opacity:.17; }
+.dash.dash--claro::after{ background:radial-gradient(ellipse 60% 55% at 50% 42%, rgba(14,124,65,.07), transparent 70%); }
 @media (prefers-reduced-motion:no-preference){
   .d-chispa__linea{ stroke-dasharray:1; animation:d-traza var(--t-trace) var(--e-out) both }
   .d-chispa__area{ animation:d-recorta var(--t-trace) var(--e-out) both }
