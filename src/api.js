@@ -192,9 +192,9 @@ function unpackLegacy(packed) {
 
 // ---- Formato "q": el que arma GoHighLevel con campos combinados, sin servidor ----
 // Camila escribe UNA línea en el campo link_datos y el workflow la pega al final del link:
-//   n=Mauricio~a=Andrade~m=D~s=La-Carolina~d=Av-Amazonas-y-NNUU~r=Edificio-Torres~p=C~it=Napolitana-M*1*15.30;Pan-de-ajo*1*2.40
-// Reglas: ~ separa campos, = separa clave y valor, - es un espacio, ; separa ítems,
-// * separa nombre, cantidad y precio; los ítems van separados por punto y coma.
+//   n=Mauricio!a=Andrade!m=D!s=La-Carolina!d=Av-Amazonas-y-NNUU!r=Edificio-Torres!p=C!it=Napolitana-M:1:15.30;Pan-de-ajo:1:2.40
+// Reglas: ! separa campos, = separa clave y valor, - es un espacio, ; separa ítems,
+// : separa nombre, cantidad y precio; los ítems van separados por punto y coma.
 // Todo URL-safe para que WhatsApp no corte el link.
 const deQ = (v) => { try { return decodeURIComponent(String(v || '')).replace(/-/g, ' ').trim() } catch { return String(v || '').replace(/-/g, ' ').trim() } }
 export const hash6 = (str) => {
@@ -207,14 +207,16 @@ export const hash6 = (str) => {
 }
 export const esFormatoQ = (packed) => /^(q\.)?[a-z]{1,2}=/.test(String(packed || ''))
 
+// WhatsApp aplica negrita/tachado con * y ~ incluso dentro de un link y lo rompe, así que el
+// formato oficial usa ! entre campos y : dentro del ítem. Los links viejos con ~ y * siguen abriendo.
 export function unpackQ(raw) {
   const s = String(raw || '').replace(/^q\./, '')
   const kv = {}
-  for (const part of s.split('~')) { const i = part.indexOf('='); if (i > 0) kv[part.slice(0, i)] = part.slice(i + 1) }
+  for (const part of s.split(/[~!]/)) { const i = part.indexOf('='); if (i > 0) kv[part.slice(0, i)] = part.slice(i + 1) }
   // Separador de ítems: punto y coma. Se aceptan también el más y el espacio
   // (un + dentro del hash llega convertido en espacio por URLSearchParams).
   const items = (kv.it || '').split(/[;+ ]+/).filter(Boolean).map((x) => {
-    const [nm, c, p] = x.split('*')
+    const [nm, c, p] = x.split(/[:*]/)
     return { nombre: deQ(nm), cantidad: Math.max(1, parseInt(c, 10) || 1), precio: Math.round((parseFloat(p) || 0) * 100) / 100 }
   })
   if (!items.length && !kv.g) return null
