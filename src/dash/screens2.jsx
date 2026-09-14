@@ -24,6 +24,9 @@ export function Camila({ rango, F, q }) {
   const entrada = useEntrada()
   const [ver, setVer] = useState(40)
   const [abierta, setAbierta] = useState(null)      // la llamada cuyo detalle está abierto
+  // Las llamadas con resumen y transcripción van primero: son las que el local quiere leer.
+  const lista = useMemo(() => [...cs].sort((a, b) => ((b.transcripcion?.length ? 1 : 0) - (a.transcripcion?.length ? 1 : 0)) || b.inicio - a.inicio), [cs])
+  const conTexto = lista.filter((c) => c.transcripcion?.length).length
   const conFiltro = q.resultado || q.motivo || q.cedula
   const titulo = conFiltro ? tituloLista({ n: cs.length, resultado: q.resultado, motivo: q.motivo, cedula: q.cedula, local: F.local ? S.nombreLocal(F.local) : null, periodo: F.periodo, dia: F.dia }) : T('Las llamadas', 'The calls')
   const cierre = tasa(embudo.pedidos, embudo.contestadas)
@@ -81,14 +84,14 @@ export function Camila({ rango, F, q }) {
         </Card>
       </div>
 
-      <Card i={2} title={titulo} sub={conFiltro ? undefined : `${llamadasTxt(cs.length)} ${PERIODO_FRASE[F.periodo]}`}
+      <Card i={2} title={titulo} sub={conFiltro ? undefined : `${llamadasTxt(cs.length)} ${PERIODO_FRASE[F.periodo]}${conTexto ? ` · ${conTexto} ${T('con resumen y transcripción', 'with summary and transcript')}` : ''}`}
         tools={conFiltro ? <button type="button" className="d-btn d-btn--sm" onClick={() => irCon({ resultado: '', motivo: '', cedula: '' })}>{T('Quitar el filtro', 'Clear the filter')}</button> : null}
         foot={cs.length > ver ? <><span>{ver} {T('de', 'of')} {cs.length}</span><button type="button" className="d-linkbtn" onClick={() => setVer(cs.length)}>{T('Ver todas', 'See all')}</button></> : null}>
         {cs.length === 0 ? <p className="d-empty"><strong>{T(`Ninguna llamada ${PERIODO_FRASE[F.periodo]}.`, `No calls ${PERIODO_FRASE[F.periodo]}.`)}</strong>{T('Las llamadas aparecen aquí apenas terminan.', 'Calls show up here as soon as they end.')}</p> : (
           <table className="d-table">
             <thead><tr><th>{T('Hora', 'Time')}</th><th>{T('Teléfono', 'Phone')}</th><th>{T('Local', 'Branch')}</th><th>{T('Duración', 'Length')}</th><th>{T('Resultado', 'Outcome')}</th><th>{T('Detalle', 'Detail')}</th></tr></thead>
             <tbody>
-              {cs.slice(0, ver).map((c) => {
+              {lista.slice(0, ver).map((c) => {
                 const per = c.persona_id ? S.personaPorId(c.persona_id) : null
                 return (
                   <tr key={c.conversacion_id}>
