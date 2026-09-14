@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getOrder, STATUS_LABEL, STATUS_LABEL_PICKUP, DEMO, demoJump, demoStep, demoFast, demoReset, trackUrl, WA, LOCAL_TEL } from '../api.js'
 import Map from './Map.jsx'
 import { go } from '../router.js'
+import { subscribeLive } from '../live.js'
 
 const money = (n) => '$' + Number(n).toFixed(2)
 const STEPS = ['recibido', 'horno', 'camino', 'entregado']
@@ -12,7 +13,17 @@ const hhmm = (ms) => new Date(ms).toLocaleTimeString('es-EC', { hour: '2-digit',
 export default function Order({ id, packed }) {
   const [o, setO] = useState(null)
   const [missing, setMissing] = useState(false)
-  const refresh = async () => setO(await getOrder(id, packed))
+  // GPS real del repartidor (ver live.js). Mientras haya fixes, mandan sobre la simulación.
+  const live = useRef({ fix: null, done: null })
+  const merge = (r) => {
+    if (!r) return r
+    const { fix, done } = live.current
+    if (!fix && !done) return r
+    const rider = fix ? { lat: fix.lat, lng: fix.lng, at: fix.at } : r.rider
+    const delivered = !!done || r.status === 'entregado'
+    return { ...r, rider, status: delivered ? 'entregado' : 'camino', live: true, paid: r.payMethod === 'tarjeta' ? true : r.paid }
+  }
+  const refresh = async () => setO(merge(await getOrder(id, packed)))
   useEffect(() => {
     let alive = true
     const tick = async () => {
@@ -20,10 +31,19 @@ export default function Order({ id, packed }) {
       if (!r) { setMissing(true); return }
       // Un link armado por el CRM llega con id "q": el id real viene adentro.
       if (r.id && r.id !== id) { go(`/pedido/${r.id}${packed ? `?d=${packed}` : ''}`); return }
-      setO(r)
+      setO(merge(r))
     }
     tick(); const t = setInterval(tick, 1500); return () => { alive = false; clearInterval(t) }
   }, [id, packed])
+  useEffect(() => {
+    if (id === 'q') return
+    return subscribeLive(id, (m) => {
+      if (m.t === 'fix' && (!live.current.fix || m.at >= live.current.fix.at)) live.current.fix = m
+      else if (m.t === 'status' && m.status === 'entregado') live.current.done = m
+      else return
+      setO((prev) => merge(prev))
+    })
+  }, [id])
 
   if (missing) return <section className="page-doc"><a href="#/" className="back-link">← Volver al menú</a><p>No encontramos el pedido <b>{id}</b>.</p></section>
   if (!o) return <section className="page-doc"><p>Cargando su pedido…</p></section>
@@ -91,13 +111,14 @@ export default function Order({ id, packed }) {
                 : o.status === 'entregado' ? '✅ Entregado'
                   : '🏠 Su dirección'}</b>
             {o.status === 'camino' && riderAgeS !== null && (
-              <span className="muted">{riderAgeS < 20 ? 'en vivo' : `actualizado hace ${riderAgeS} s`}</span>
+              <span className={o.live ? 'live-badge' : 'muted'}>{o.live && <i className="live-dot" />}{o.live ? 'GPS real · ' : ''}{riderAgeS < 20 ? 'en vivo' : `actualizado hace ${riderAgeS} s`}</span>
             )}
           </div>
           <Map
             rider={o.status === 'camino' || o.status === 'entregado' ? o.rider : null}
             dest={o.dest}
             showLocal={!pickup}
+            follow={!!o.live}
           >{demoDock}</Map>
           <p className="muted small">
             {pickup
@@ -125,7 +146,7 @@ export default function Order({ id, packed }) {
 
       {DEMO && (
         <p className="demo-note">
-          Vista de demostración · el motorizado se simula.
+          {o.live ? '📡 Ubicación real: llega del GPS del celular del repartidor.' : 'Vista de demostración · el motorizado se simula.'}
           {' '}<a href={`#/repartidor/${id}${packed ? `?d=${packed}` : ''}`}>Abrir la pantalla del repartidor</a>
         </p>
       )}

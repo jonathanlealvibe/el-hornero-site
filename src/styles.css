@@ -275,6 +275,9 @@ img { max-width: 100%; }
 .timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .timeline li { font-size: 13px; color: var(--muted); display: grid; gap: 8px; justify-items: center; text-align: center; }
 .timeline .dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px #6A6A6A; } .timeline li.done { color: var(--ink); font-weight: 600; } .timeline li.done .dot { background: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
+.live-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #0E5A33; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #1DB954; box-shadow: 0 0 0 0 rgba(29,185,84,.6); animation: eh-pulse 1.6s infinite; }
+@keyframes eh-pulse { 0% { box-shadow: 0 0 0 0 rgba(29,185,84,.6); } 70% { box-shadow: 0 0 0 8px rgba(29,185,84,0); } 100% { box-shadow: 0 0 0 0 rgba(29,185,84,0); } }
 .track { margin: 18px 0; } .track-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .eh-map { width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #E6E6E6; }
 .eh-pin { background: transparent; border: 0; } .eh-pin-home, .eh-pin-moto { font-size: 26px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }

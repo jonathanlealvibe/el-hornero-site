@@ -3,7 +3,9 @@ import { LOCAL } from '../api.js'
 
 // Leaflet is loaded globally from index.html (CDN, no API key). OpenStreetMap tiles.
 // `children` are drawn on top of the map, so controls can sit over it.
-export default function Map({ rider, dest, height = 260, showLocal = true, children }) {
+// `follow`: la posición es real (GPS). Si el repartidor está lejos de la casa, el mapa lo sigue
+// a él en vez de abrir el zoom hasta abarcar a los dos.
+export default function Map({ rider, dest, height = 260, showLocal = true, follow = false, children }) {
   const el = useRef(null), map = useRef(null), mk = useRef({})
   const userMoved = useRef(false)
   const ours = useRef(false)          // true while WE are moving the map, so it is not read as a user pan
@@ -12,6 +14,17 @@ export default function Map({ rider, dest, height = 260, showLocal = true, child
   const fit = () => {
     if (!map.current) return
     const L = window.L
+    if (follow && rider) {
+      const km = 111 * Math.hypot(rider.lat - dest.lat, (rider.lng - dest.lng) * Math.cos((dest.lat * Math.PI) / 180))
+      if (km > 5) {
+        ours.current = true
+        map.current.setView([rider.lat, rider.lng], 16)
+        setTimeout(() => { ours.current = false }, 400)
+        userMoved.current = false
+        setOffCenter(false)
+        return
+      }
+    }
     const pts = [[dest.lat, dest.lng]]
     if (rider) pts.push([rider.lat, rider.lng])
     else if (showLocal) pts.push([LOCAL.lat, LOCAL.lng])
@@ -68,7 +81,7 @@ export default function Map({ rider, dest, height = 260, showLocal = true, child
       mk.current.line.setLatLngs(showLocal ? [[LOCAL.lat, LOCAL.lng], [dest.lat, dest.lng]] : [])
     }
     if (!userMoved.current) fit()
-  }, [rider?.lat, rider?.lng, dest.lat, dest.lng])
+  }, [rider?.lat, rider?.lng, dest.lat, dest.lng, follow])
 
   return (
     <div className="eh-map-wrap" style={{ height }}>

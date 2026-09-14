@@ -193,7 +193,7 @@ function unpackLegacy(packed) {
 // * separa nombre, cantidad y precio; los ítems van separados por punto y coma.
 // Todo URL-safe para que WhatsApp no corte el link.
 const deQ = (v) => { try { return decodeURIComponent(String(v || '')).replace(/-/g, ' ').trim() } catch { return String(v || '').replace(/-/g, ' ').trim() } }
-const hash6 = (str) => {
+export const hash6 = (str) => {
   let h = 5381
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0
   const A = '23456789BCDFGHJKLMNPQRSTVWXZ'
