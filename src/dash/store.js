@@ -335,6 +335,16 @@ export function cambiarEstado(pedido_id, estado, { forzar = false } = {}) {
   return true
 }
 
+export function anotarPedido(pedido_id, notas) {
+  const d = cargar()
+  const p = d.pedidos[pedido_id]
+  if (!p) return false
+  p.notas = notas || ''
+  p.notas_en = notas ? Date.now() : null
+  guardar()
+  return true
+}
+
 export function cancelarPedido(pedido_id, motivo) {
   const d = cargar()
   const p = d.pedidos[pedido_id]

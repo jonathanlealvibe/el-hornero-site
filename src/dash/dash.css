@@ -752,3 +752,27 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
 .d-form__check{ display:flex !important; align-items:center; gap:8px; }
 .d-form__actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
 .d-promo-texto{ font-size:14px; line-height:1.55; padding:12px 14px; border-radius:var(--r-sm); background:var(--d-surface-2); border:1px solid var(--d-line-soft); }
+
+/* Estado por color y palabra + desplegable + notas */
+.d-badge--e-pendiente_pago{ background:var(--d-yellow-wash); color:var(--d-yellow) }
+.d-badge--e-recibido{ background:var(--d-blue-wash); color:var(--d-blue-lit) }
+.d-badge--e-horno{ background:rgba(232,135,30,.18); color:#F0A044 }
+.d-badge--e-camino{ background:rgba(29,185,84,.16); color:#4FCB85 }
+.d-badge--e-entregado{ background:var(--d-green-wash); color:var(--d-green-lit) }
+.d-badge--e-cancelado{ background:var(--d-broken-wash); color:var(--d-broken) }
+.dash--claro .d-badge--e-recibido{ color:var(--d-blue) }
+.dash--claro .d-badge--e-horno{ background:#FDEBD3; color:#B85C0A }
+.dash--claro .d-badge--e-camino{ background:#DDF3E6; color:#0E7C41 }
+.d-estado-cell{ display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap }
+.d-select--estado{ height:30px; padding:0 26px 0 10px; font-size:12.5px; font-weight:600; border-width:1.5px }
+.d-select--e-pendiente_pago{ border-color:var(--d-yellow); color:var(--d-yellow) }
+.d-select--e-recibido{ border-color:var(--d-blue); color:var(--d-blue-lit) }
+.d-select--e-horno{ border-color:#F0A044; color:#F0A044 }
+.d-select--e-camino{ border-color:#4FCB85; color:#4FCB85 }
+.d-select--e-entregado{ border-color:var(--d-green-lit); color:var(--d-green-lit) }
+.d-select--e-cancelado{ border-color:var(--d-broken); color:var(--d-broken) }
+.dash--claro .d-select--e-recibido{ color:var(--d-blue) } .dash--claro .d-select--e-horno{ color:#B85C0A } .dash--claro .d-select--e-camino{ color:#0E7C41 }
+.d-nota-mark{ font-size:12px; margin-left:2px; cursor:help }
+.d-notas{ display:grid; gap:10px }
+.d-notas__ta{ height:auto; min-height:96px; padding:10px 12px; resize:vertical; font:inherit; line-height:1.45 }
+.d-notas__acts{ display:flex; justify-content:flex-end }

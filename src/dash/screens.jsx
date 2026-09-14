@@ -9,7 +9,7 @@ import { useVersion } from './useStore.js'
 import { useEntrada, useNuevos, usarCifra, marcar, useMovil } from './motion.js'
 import { T } from './i18n.js'
 import { cuenta, CANAL, MODALIDAD, PAGO, RESULTADO, ESTADO, MOTIVO, estadoTexto, tituloLista, titularHoy, diaSemana, diaLargo } from './textos.js'
-import { EstadoPedido, CampoEditable, MenuEstado, useToast } from './Editable.jsx'
+import { EstadoPedido, CampoEditable, MenuEstado, useToast, SelectorEstado } from './Editable.jsx'
 
 /* ---------------------------------------------------------------- piezas */
 
@@ -80,7 +80,7 @@ export const Rank = ({ rows, label = (r) => r.nombre, value = (r) => r.total, me
 
 export const Badge = ({ estado, modalidad }) => {
   const t = ESTADO[estado] || [estado, 'off']
-  return <span className={`d-badge d-badge--${t[1]}`}>{estadoTexto(estado, modalidad)}</span>
+  return <span className={`d-badge d-badge--${t[1]} d-badge--e-${estado}`}>{estadoTexto(estado, modalidad)}</span>
 }
 
 // La cifra del día: cuenta una vez al montar; el lector recibe el valor final.
@@ -550,12 +550,12 @@ export function Pedidos({ rango, F, q }) {
                 const per = S.personaPorId(p.persona_id)
                 return (
                   <tr key={p.pedido_id}>
-                    <td data-l={T('Pedido', 'Order')}><a href={hrefPanel('pedidos/' + p.pedido_id, { from: q.from || 'pedidos' }, F)}>{p.pedido_id}</a></td>
+                    <td data-l={T('Pedido', 'Order')}><a href={hrefPanel('pedidos/' + p.pedido_id, { from: q.from || 'pedidos' }, F)}>{p.pedido_id}</a>{p.notas ? <span className="d-nota-mark" title={p.notas} aria-label={T('Tiene notas', 'Has notes')}> 📝</span> : null}</td>
                     <td data-l={T('Hora', 'Time')}>{F.periodo === 'hoy' || F.periodo === 'ayer' ? hhmm(p.creado_en) : `${fecha(p.creado_en)} ${hhmm(p.creado_en)}`}</td>
                     <td data-l={T('Cliente', 'Customer')}>{per ? <a href={hrefPanel('clientes/' + per.persona_id, {}, F)}>{per.nombre} {per.apellido}</a> : <span className="d-quiet">{T('Sin cliente', 'No customer')}</span>}</td>
                     <td data-l={T('Local', 'Branch')}>{S.nombreLocal(p.local_id)}</td>
                     <td data-l={T('Por dónde', 'Via')} className="d-quiet">{CANAL[p.canal] || p.canal}</td>
-                    <td data-l={T('Estado', 'Status')}>{fino && !['entregado', 'cancelado'].includes(p.estado) ? <EstadoPedido pedido={p} compacto /> : <Badge estado={p.estado} modalidad={p.modalidad} />}</td>
+                    <td data-l={T('Estado', 'Status')}><span className="d-estado-cell"><Badge estado={p.estado} modalidad={p.modalidad} /><SelectorEstado pedido={p} /></span></td>
                     {conMinutos && <td data-l={T('Minutos', 'Minutes')} className={'d-num' + (p.minutos_entrega > 35 ? ' d-late' : '')}>{p.minutos_entrega ?? SIN_DATO}</td>}
                     <td data-l="Total" className="d-num money">{money(p.total_cobrado)}</td>
                   </tr>
@@ -598,7 +598,7 @@ export function PedidoFicha({ id, F }) {
         <h1 style={{ marginTop: 4 }}>{id}</h1>
         <p className="d-hero__foot">{fechaLarga(p.creado_en)}, {hhmm(p.creado_en)} · {S.nombreLocal(p.local_id)} · {CANAL[p.canal] || p.canal}</p>
         <p style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Badge estado={p.estado} modalidad={p.modalidad} /> <span className="d-quiet">{MODALIDAD[p.modalidad]} · {PAGO[p.forma_pago] || p.forma_pago} · {T('Envío', 'Delivery fee')}: {p.envio_cobrado ? money(p.envio_cobrado) : T('sin costo', 'free')}</span>
+          <Badge estado={p.estado} modalidad={p.modalidad} /> <SelectorEstado pedido={p} /> <span className="d-quiet">{MODALIDAD[p.modalidad]} · {PAGO[p.forma_pago] || p.forma_pago} · {T('Envío', 'Delivery fee')}: {p.envio_cobrado ? money(p.envio_cobrado) : T('sin costo', 'free')}</span>
         </p>
         {hist.length > 0 && <p className="d-hero__foot">{hist.join(' · ')}</p>}
       </section>
@@ -619,10 +619,12 @@ export function PedidoFicha({ id, F }) {
             </tbody>
           </table>
         </Card>
-        <Card span={5} title={T('Estado del pedido', 'Order status')} sub={T('Un toque avanza un paso; se puede deshacer 5 segundos', 'One tap moves one step; undo within 5 seconds')}>
+        <Card span={5} title={T('Estado del pedido', 'Order status')} sub={T('Un toque avanza un paso; se puede deshacer 5 segundos. El desplegable de arriba salta a cualquier estado.', 'One tap moves one step; undo within 5 seconds. The dropdown above jumps to any status.')}>
           <EstadoPedido pedido={p} />
         </Card>
       </div>
+
+      <NotasPedido pedido={p} />
 
       <Card title={T('Cliente', 'Customer')} sub={per?.cedula ? T(`Cédula ${per.cedula} · se le reconoce desde cualquier teléfono`, `ID ${per.cedula} · recognised from any phone`) : T('Sin cédula: no se le reconoce desde otro teléfono', 'No ID number: not recognised from another phone')}>
         {per ? (
@@ -830,5 +832,24 @@ export function Resumen({ F }) {
         </Card>
       </div>
     </div>
+  )
+}
+
+
+// Notas del equipo de El Hornero sobre el pedido: quedan guardadas con el pedido, visibles en la lista con 📝.
+function NotasPedido({ pedido }) {
+  const avisar = useToast()
+  const [txt, setTxt] = useState(pedido.notas || '')
+  useEffect(() => { setTxt(pedido.notas || '') }, [pedido.pedido_id, pedido.notas])
+  const guardar = () => { S.anotarPedido(pedido.pedido_id, txt.trim()); avisar(T('Nota guardada.', 'Note saved.')) }
+  return (
+    <Card title={T('Notas del equipo', 'Team notes')} sub={pedido.notas_en ? T(`Última nota ${hhmm(pedido.notas_en)}`, `Last note ${hhmm(pedido.notas_en)}`) : T('Lo que el local quiera dejar anotado sobre este pedido: cambio, alergias, timbre malo, cliente frecuente…', 'Anything the branch wants noted on this order: change, allergies, broken doorbell, regular customer…')}>
+      <div className="d-notas">
+        <textarea className="d-input d-notas__ta" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={T('Escriba aquí…', 'Write here…')} rows={4} />
+        <div className="d-notas__acts">
+          <button type="button" className="d-btn d-btn--primary d-btn--sm" onClick={guardar} disabled={txt.trim() === (pedido.notas || '')}>{T('Guardar nota', 'Save note')}</button>
+        </div>
+      </div>
+    </Card>
   )
 }

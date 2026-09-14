@@ -244,3 +244,47 @@ export function MenuEstado({ pedido, href }) {
     </span>
   )
 }
+
+
+/* ----------------------------------------------------- desplegable de estado */
+
+// Desplegable simple con la palabra y el color del estado: salta a cualquier paso (con Deshacer)
+// o cancela pidiendo motivo. Convive con la escalera y con el avance automático del reloj.
+export function SelectorEstado({ pedido }) {
+  const avisar = useToast()
+  const [dialogo, setDialogo] = useState(false)
+  const [motivo, setMotivo] = useState(MOTIVOS()[0])
+  const pasos = S.pasosDe(pedido)
+  const cancelado = pedido.estado === 'cancelado'
+  const cambiar = (v) => {
+    if (v === '__cancelar') { setDialogo(true); return }
+    if (v === pedido.estado) return
+    const antes = pedido.estado
+    if (S.cambiarEstado(pedido.pedido_id, v, { forzar: true })) {
+      avisar(T(`${pedido.pedido_id} pasó a ${estadoTexto(v, pedido.modalidad)}`, `${pedido.pedido_id} moved to ${estadoTexto(v, pedido.modalidad)}`), { deshacer: () => S.cambiarEstado(pedido.pedido_id, antes, { forzar: true }) })
+    }
+  }
+  const cancelar = () => { S.cancelarPedido(pedido.pedido_id, motivo); setDialogo(false); avisar(T(`${pedido.pedido_id} quedó cancelado`, `${pedido.pedido_id} was cancelled`)) }
+  return (
+    <span onClick={(e) => e.stopPropagation()}>
+      <select className={'d-select d-select--estado d-select--e-' + pedido.estado} value={pedido.estado} disabled={cancelado}
+        aria-label={T('Cambiar estado', 'Change status')} onChange={(e) => cambiar(e.target.value)}>
+        {pasos.map((p) => <option key={p} value={p}>{estadoTexto(p, pedido.modalidad)}</option>)}
+        {cancelado ? <option value="cancelado">{estadoTexto('cancelado')}</option> : <option value="__cancelar">{T('Cancelar el pedido…', 'Cancel the order…')}</option>}
+      </select>
+      {dialogo && (
+        <Dialogo titulo={T(`¿Cancelar el pedido ${pedido.pedido_id}?`, `Cancel order ${pedido.pedido_id}?`)} onCerrar={() => setDialogo(false)}>
+          <div className="d-radios">
+            {MOTIVOS().map((m) => (
+              <label key={m}><input type="radio" name={'motivo-sel-' + pedido.pedido_id} checked={motivo === m} onChange={() => setMotivo(m)} /> {m}</label>
+            ))}
+          </div>
+          <div className="d-dialog__acts">
+            <button type="button" className="d-btn" onClick={() => setDialogo(false)}>{T('No, dejarlo como está', 'No, leave it')}</button>
+            <button type="button" className="d-btn d-btn--danger" onClick={cancelar}>{T('Sí, cancelar', 'Yes, cancel')}</button>
+          </div>
+        </Dialogo>
+      )}
+    </span>
+  )
+}
