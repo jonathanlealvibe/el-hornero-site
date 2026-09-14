@@ -386,3 +386,11 @@ img { max-width: 100%; }
 }
 .toast b { color: var(--yellow); white-space: nowrap; }
 @media (max-width: 700px) { .toast { bottom: calc(86px + env(safe-area-inset-bottom)); } }
+
+/* Botón "Mis links por WhatsApp": fijo abajo a la izquierda; el widget de voz está a la derecha. */
+.wa-links { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 60; display: inline-flex; align-items: center; gap: 9px;
+  padding: 11px 16px 11px 13px; border-radius: 999px; background: #25D366; color: #08301a; font-weight: 700; font-size: 14px; text-decoration: none;
+  box-shadow: 0 8px 22px rgba(0,0,0,.22); transition: transform 120ms ease-out, background-color 120ms; }
+.wa-links:hover { background: #1fbf5a; transform: translateY(-1px); }
+.wa-links svg { flex: 0 0 auto; }
+@media (max-width: 520px) { .wa-links span { font-size: 13px; } .wa-links { padding: 10px 14px 10px 12px; } }

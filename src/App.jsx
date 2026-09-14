@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CATS, MENU, FREE_DELIVERY_OVER, DELIVERY_FEE, IVA } from './data.js'
 import InstallButton from './InstallButton.jsx'
+import WhatsAppLinks from './WhatsAppLinks.jsx'
 import { useRoute, go } from './router.js'
 import { lazy, Suspense } from 'react'
 const Panel = lazy(() => import('./dash/Panel.jsx'))
@@ -171,6 +172,7 @@ function Home() {
       </section>
 
       <InstallButton />
+      <WhatsAppLinks />
 
       <div className="catalog-cta">
         <a href="#menu">Conoce nuestro catálogo</a>
