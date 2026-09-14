@@ -10,6 +10,8 @@ export default function Driver({ id, packed }) {
   const [err, setErr] = useState('')
   const [sent, setSent] = useState(0)
   const [relayOk, setRelayOk] = useState(true)
+  // null = sin pedir · 'on' = pantalla bloqueada encendida · 'off' = se soltó · 'no' = el navegador no lo soporta
+  const [awake, setAwake] = useState(null)
   const watch = useRef(null)
   const lastSent = useRef(0)
   const wake = useRef(null)
@@ -17,11 +19,17 @@ export default function Driver({ id, packed }) {
 
   // Pantalla encendida mientras reparte: sin esto el celular se bloquea y el GPS se apaga.
   const keepAwake = async () => {
-    try { if (navigator.wakeLock && !wake.current) wake.current = await navigator.wakeLock.request('screen') } catch { /* no soportado */ }
+    if (!navigator.wakeLock) { setAwake('no'); return }
+    if (wake.current) return
+    try {
+      wake.current = await navigator.wakeLock.request('screen')
+      setAwake('on')
+      wake.current.addEventListener('release', () => { wake.current = null; setAwake((a) => (a === 'on' ? 'off' : a)) })
+    } catch { setAwake('off') }
   }
-  const releaseAwake = () => { try { wake.current?.release() } catch { /* ignore */ } wake.current = null }
+  const releaseAwake = () => { try { wake.current?.release() } catch { /* ignore */ } wake.current = null; setAwake(null) }
   useEffect(() => {
-    const onVis = () => { if (document.visibilityState === 'visible' && sharingRef.current) { wake.current = null; keepAwake() } }
+    const onVis = () => { if (document.visibilityState === 'visible' && sharingRef.current) keepAwake() }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
@@ -78,6 +86,9 @@ export default function Driver({ id, packed }) {
         ? <button className="btn-primary wide" onClick={start}>🛵 Salir a entregar (compartir ubicación)</button>
         : <button className="btn-secondary wide" onClick={stop}>Pausar ubicación</button>}
       {last && <p className="muted small">Última ubicación: {last.lat.toFixed(5)}, {last.lng.toFixed(5)} · {sent} enviada{sent === 1 ? '' : 's'} al cliente</p>}
+      {sharing && awake === 'on' && <p className="awake-on">☀️ Pantalla activa: el celular no se bloquea mientras esta página esté al frente.</p>}
+      {sharing && awake === 'off' && <p className="error">La pantalla puede bloquearse. Toque la pantalla o vuelva a esta página para reactivarla.</p>}
+      {sharing && awake === 'no' && <p className="error">Este navegador no mantiene la pantalla encendida: en Ajustes, suba el tiempo de bloqueo automático.</p>}
       {!relayOk && <p className="error">No se pudo enviar la ubicación al cliente. Revise la señal de datos.</p>}
       {err && <p className="error">{err}</p>}
       <button className="btn-primary wide" onClick={delivered} disabled={o.status === 'entregado'}>✅ Marcar entregado</button>
