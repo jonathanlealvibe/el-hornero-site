@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import * as S from './store.js'
 import FleetMap from './FleetMap.jsx'
 import { money, num, hhmm, fecha, dur, tasa, SIN_DATO } from './format.js'
@@ -6,7 +6,7 @@ import { hrefPanel, irCon, PERIODO_FRASE } from './nav.js'
 import { useVersion } from './useStore.js'
 import { useEntrada, marcar, useMovil } from './motion.js'
 import { T } from './i18n.js'
-import { cuenta, CANAL, MOTIVO, RESULTADO, CONFIANZA, PAGO, tituloLista } from './textos.js'
+import { cuenta, CANAL, MOTIVO, RESULTADO, CONFIANZA, PAGO, MODALIDAD, tituloLista } from './textos.js'
 import { EstadoPedido, CampoEditable, Dialogo, useToast } from './Editable.jsx'
 import { Card, Stat, Rank, Badge } from './screens.jsx'
 
@@ -23,10 +23,11 @@ export function Camila({ rango, F, q }) {
   const embudo = useMemo(() => S.embudoLlamadas(rango), [rango, version])
   const entrada = useEntrada()
   const [ver, setVer] = useState(40)
+  const [abierta, setAbierta] = useState(null)      // la llamada cuyo detalle está abierto
   const conFiltro = q.resultado || q.motivo || q.cedula
   const titulo = conFiltro ? tituloLista({ n: cs.length, resultado: q.resultado, motivo: q.motivo, cedula: q.cedula, local: F.local ? S.nombreLocal(F.local) : null, periodo: F.periodo, dia: F.dia }) : T('Las llamadas', 'The calls')
   const cierre = tasa(embudo.pedidos, embudo.contestadas)
-  const vendido = useMemo(() => cs.filter((c) => c.resultado === 'pedido').reduce((t, c) => t + (c.pedido_id ? S.estado().pedidos[c.pedido_id]?.total_cobrado || 0 : 0), 0), [cs])
+  const vendido = useMemo(() => cs.filter((c) => c.resultado === 'pedido').reduce((t, c) => t + (c.pedido_id ? S.estado().pedidos[c.pedido_id]?.total_cobrado || 0 : (c.total || 0)), 0), [cs])
 
   return (
     <div className={entrada ? 'd-entrada' : ''} style={{ display: 'grid', gap: 20 }}>
@@ -85,19 +86,23 @@ export function Camila({ rango, F, q }) {
         foot={cs.length > ver ? <><span>{ver} {T('de', 'of')} {cs.length}</span><button type="button" className="d-linkbtn" onClick={() => setVer(cs.length)}>{T('Ver todas', 'See all')}</button></> : null}>
         {cs.length === 0 ? <p className="d-empty"><strong>{T(`Ninguna llamada ${PERIODO_FRASE[F.periodo]}.`, `No calls ${PERIODO_FRASE[F.periodo]}.`)}</strong>{T('Las llamadas aparecen aquí apenas terminan.', 'Calls show up here as soon as they end.')}</p> : (
           <table className="d-table">
-            <thead><tr><th>{T('Hora', 'Time')}</th><th>{T('Teléfono', 'Phone')}</th><th>{T('Local', 'Branch')}</th><th>{T('Duración', 'Length')}</th><th>{T('Resultado', 'Outcome')}</th></tr></thead>
+            <thead><tr><th>{T('Hora', 'Time')}</th><th>{T('Teléfono', 'Phone')}</th><th>{T('Local', 'Branch')}</th><th>{T('Duración', 'Length')}</th><th>{T('Resultado', 'Outcome')}</th><th>{T('Detalle', 'Detail')}</th></tr></thead>
             <tbody>
               {cs.slice(0, ver).map((c) => {
                 const per = c.persona_id ? S.personaPorId(c.persona_id) : null
                 return (
                   <tr key={c.conversacion_id}>
                     <td data-l={T('Hora', 'Time')}>{F.periodo === 'hoy' || F.periodo === 'ayer' ? hhmm(c.inicio) : `${fecha(c.inicio)} ${hhmm(c.inicio)}`}</td>
-                    <td data-l={T('Teléfono', 'Phone')}>{per ? <a href={hrefPanel('clientes/' + per.persona_id, {}, F)}>{per.nombre} {per.apellido}</a> : <span className="d-quiet">{S.telefonoBonito(c.telefono)}</span>}</td>
+                    <td data-l={T('Teléfono', 'Phone')}>{per ? <a href={hrefPanel('clientes/' + per.persona_id, {}, F)}>{per.nombre} {per.apellido}</a> : c.contacto ? <span>{c.contacto}</span> : <span className="d-quiet">{S.telefonoBonito(c.telefono)}</span>}</td>
                     <td data-l={T('Local', 'Branch')}>{S.nombreLocal(c.local_id) || SIN_DATO}</td>
                     <td data-l={T('Duración', 'Length')}>{c.duracion_s ? dur(c.duracion_s) : SIN_DATO}</td>
-                    <td data-l={T('Resultado', 'Outcome')}>{c.resultado === 'pedido'
+                    <td data-l={T('Resultado', 'Outcome')}>{c.resultado === 'pedido' && c.pedido_id
                       ? <a href={hrefPanel('pedidos/' + c.pedido_id, { from: 'camila' }, F)}>{T('Pidió', 'Ordered')} · {c.pedido_id}</a>
+                      : c.resultado === 'pedido' ? <span>{T('Pidió', 'Ordered')}{c.total ? ` · ${money(c.total)}` : ''}</span>
                       : <span className="d-quiet">{RESULTADO[c.resultado]}{c.motivo_no_cierre ? ` · ${MOTIVO[c.motivo_no_cierre]?.corto || c.motivo_no_cierre}` : ''}</span>}</td>
+                    <td data-l={T('Detalle', 'Detail')}>{c.transcripcion?.length || c.resumen
+                      ? <button type="button" className="d-btn d-btn--sm" onClick={() => setAbierta(c)}>{T('Resumen y transcripción', 'Summary and transcript')}</button>
+                      : <span className="d-quiet">{SIN_DATO}</span>}</td>
                   </tr>
                 )
               })}
@@ -105,7 +110,68 @@ export function Camila({ rango, F, q }) {
           </table>
         )}
       </Card>
+      {abierta && <LlamadaDetalle c={abierta} onCerrar={() => setAbierta(null)} />}
     </div>
+  )
+}
+
+/* ------------------------------------------------ una llamada, completa */
+
+// Lo que la plataforma de voz deja de cada llamada: resumen, datos guardados,
+// acciones y la transcripción palabra por palabra.
+function LlamadaDetalle({ c, onCerrar }) {
+  const avisar = useToast()
+  const per = c.persona_id ? S.personaPorId(c.persona_id) : null
+  const quien = per ? `${per.nombre} ${per.apellido}`.trim() : (c.contacto || S.telefonoBonito(c.telefono) || T('Sin nombre', 'No name'))
+  const datos = c.datos && typeof c.datos === 'object' ? Object.entries(c.datos) : []
+  const lineas = (c.transcripcion || []).map((m) => `${m.q === 'cliente' ? quien : 'Camila'}: ${m.t}`).join('\n')
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(lineas); avisar(T('Transcripción copiada', 'Transcript copied')) }
+    catch { avisar(T('No se pudo copiar', 'Could not copy')) }
+  }
+  return (
+    <Dialogo ancho titulo={`${T('Llamada de las', 'Call at')} ${hhmm(c.inicio)} · ${quien}`} onCerrar={onCerrar}>
+      <div className="d-llamada">
+        <div className="d-llamada__meta">
+          <span className="d-chipq">{fecha(c.inicio)} · {hhmm(c.inicio)}</span>
+          <span className="d-chipq">{c.duracion_s ? dur(c.duracion_s) : SIN_DATO}</span>
+          <span className={'d-badge ' + (c.resultado === 'pedido' ? 'd-badge--ok' : c.resultado === 'no_contestada' ? 'd-badge--off' : 'd-badge--wait')}>{RESULTADO[c.resultado]}{c.total ? ` · ${money(c.total)}` : ''}</span>
+          {c.local_id && <span className="d-chipq">{S.nombreLocal(c.local_id)}</span>}
+          {c.modalidad && <span className="d-chipq">{MODALIDAD[c.modalidad]}</span>}
+          {c.origen === 'real' && <span className="d-badge d-badge--ok">{T('Llamada real', 'Real call')}</span>}
+        </div>
+        {c.resumen && <section><h3>{T('Resumen', 'Summary')}</h3><p className="d-llamada__resumen">{c.resumen}</p></section>}
+        <section>
+          <h3>{T('Datos que quedaron guardados', 'Data saved')}</h3>
+          {datos.length
+            ? <dl className="d-kv2">{datos.map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>)}</dl>
+            : <p className="d-quiet">{T('No alcanzó a guardar datos.', 'Nothing was saved.')}</p>}
+        </section>
+        {c.acciones?.length > 0 && (
+          <section>
+            <h3>{T('Lo que hizo Camila', 'What Camila did')}</h3>
+            <div className="d-llamada__meta">{c.acciones.map((a, i) => <span key={i} className="d-chipq">{a}</span>)}</div>
+          </section>
+        )}
+        {c.transcripcion?.length > 0 && (
+          <section>
+            <h3>{T('Transcripción completa', 'Full transcript')} · {c.transcripcion.length} {T('intervenciones', 'turns')}</h3>
+            {c.nota && <p className="d-chat__nota">{c.nota}</p>}
+            <div className="d-chat">
+              {c.transcripcion.map((m, i) => (
+                <div key={i} className={'d-chat__m d-chat__m--' + (m.q === 'cliente' ? 'cliente' : 'camila')}>
+                  <b>{m.q === 'cliente' ? quien : 'Camila'}</b>{m.t}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        <div className="d-dialog__acts">
+          {c.transcripcion?.length > 0 && <button type="button" className="d-btn" onClick={copiar}>{T('Copiar transcripción', 'Copy transcript')}</button>}
+          <button type="button" className="d-btn d-btn--primary" onClick={onCerrar}>{T('Cerrar', 'Close')}</button>
+        </div>
+      </div>
+    </Dialogo>
   )
 }
 

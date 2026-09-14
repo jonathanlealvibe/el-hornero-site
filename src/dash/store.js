@@ -364,7 +364,7 @@ export function registrarConversacion(c) {
   d.conversaciones[id] = {
     conversacion_id: id,
     persona_id: c.persona_id || null,
-    telefono: normalizarTelefono(c.telefono),
+    telefono: c.telefono ? normalizarTelefono(c.telefono) : null,
     local_id: c.local_id || null,
     canal: c.canal || 'llamada',
     inicio: c.inicio || Date.now(),
@@ -373,6 +373,16 @@ export function registrarConversacion(c) {
     motivo_no_cierre: c.motivo_no_cierre || null,
     cedula_capturada: !!c.cedula_capturada,
     pedido_id: c.pedido_id || null,
+    // Lo que deja la plataforma de voz al terminar: resumen, datos, acciones y transcripción.
+    contacto: c.contacto || null,
+    total: c.total ?? null,
+    modalidad: c.modalidad || null,
+    resumen: c.resumen || null,
+    datos: c.datos || null,
+    acciones: Array.isArray(c.acciones) ? c.acciones : null,
+    transcripcion: Array.isArray(c.transcripcion) ? c.transcripcion : null,
+    nota: c.nota || null,
+    origen: c.origen || null,
     dia: dayKey(new Date(c.inicio || Date.now())),
   }
   guardar()

@@ -7,6 +7,7 @@ import { PERIODOS, rangoDe, usarFiltros, irCon, hrefPanel } from './nav.js'
 import { useDormido } from './motion.js'
 import { T, getLang, setLang, getTema, setTema, getDatos, setDatos } from './i18n.js'
 import { importarPedidosDelSitio, avisarTienda } from './vivo.js'
+import { importarLlamadasReales } from './llamadas-reales.js'
 import { ToastHost } from './Editable.jsx'
 import { Hoy, Pedidos, PedidoFicha, Resumen } from './screens.jsx'
 import { Camila, Clientes, Cliente, Motorizados } from './screens2.jsx'
@@ -54,6 +55,7 @@ export default function Panel() {
       if (vieja) sembrar({ dias: 14 })
       else renovarDemo()          // la pestaña volvió: las motos que ya llegaron se entregan y salen otras
     } else importarPedidosDelSitio()
+    importarLlamadasReales()      // las llamadas reales de Camila, con resumen y transcripción
     setListo(true)
   }, [datos])
 
@@ -63,7 +65,7 @@ export default function Panel() {
   useEffect(() => {
     const marca = () => { toque.current = Date.now() }
     for (const ev of ['scroll', 'pointerdown']) window.addEventListener(ev, marca, { passive: true })
-    const refrescar = () => { if (datos === 'vivo') importarPedidosDelSitio(); else renovarDemo(); S.refrescar(); setUltimo(Date.now()) }
+    const refrescar = () => { if (datos === 'vivo') importarPedidosDelSitio(); else renovarDemo(); importarLlamadasReales(); S.refrescar(); setUltimo(Date.now()) }
     const t = setInterval(() => {
       if (document.hidden) return
       if (Date.now() - toque.current < 800) return

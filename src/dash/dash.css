@@ -776,3 +776,25 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
 .d-notas{ display:grid; gap:10px }
 .d-notas__ta{ height:auto; min-height:96px; padding:10px 12px; resize:vertical; font:inherit; line-height:1.45 }
 .d-notas__acts{ display:flex; justify-content:flex-end }
+
+/* ---- una llamada completa: resumen, datos, acciones y transcripción ---- */
+.d-dialog--ancho{ width:min(780px,100%); max-height:calc(100dvh - 32px); overflow:auto; }
+.d-llamada{ display:grid; gap:16px }
+.d-llamada section{ display:grid; gap:6px }
+.d-llamada h3{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--d-muted); margin:0 }
+.d-llamada__meta{ display:flex; flex-wrap:wrap; gap:8px; align-items:center }
+.d-llamada__resumen{ font-size:14px; line-height:1.55; color:var(--d-ink) }
+.d-chipq{ display:inline-flex; align-items:center; min-height:24px; padding:0 10px; border-radius:var(--r-pill); background:var(--d-surface-3); color:var(--d-ink-2); font-size:12.5px; font-weight:500; white-space:nowrap }
+.d-kv2{ display:grid; grid-template-columns:auto 1fr; gap:5px 16px; font-size:13.5px; margin:0 }
+.d-kv2 dt{ color:var(--d-muted) } .d-kv2 dd{ margin:0; color:var(--d-ink) }
+.d-chat{ display:grid; gap:8px; max-height:52dvh; overflow:auto; padding:4px 2px; scrollbar-width:thin }
+.d-chat__m{ max-width:86%; padding:8px 12px; border-radius:14px; font-size:13.5px; line-height:1.45; color:var(--d-ink); word-break:break-word }
+.d-chat__m b{ display:block; font-size:10.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--d-muted); margin-bottom:2px }
+.d-chat__m--camila{ justify-self:start; background:var(--d-surface-3); border-bottom-left-radius:4px }
+.d-chat__m--cliente{ justify-self:end; background:var(--d-green); color:#FFF; border-bottom-right-radius:4px }
+.d-chat__m--cliente b{ color:rgba(255,255,255,.72) }
+.d-chat__nota{ font-size:12.5px; color:var(--d-muted); font-style:italic; line-height:1.45 }
+.dash.dash--claro .d-chipq{ background:#EEF1EC; color:#3A423C }
+.dash.dash--claro .d-chat__m--camila{ background:#EEF1EC; color:#1D1D1B }
+.dash.dash--claro .d-chat__m--cliente{ background:var(--d-green); color:#FFF }
+@media (max-width:640px){ .d-chat__m{ max-width:94% } .d-kv2{ grid-template-columns:1fr } }

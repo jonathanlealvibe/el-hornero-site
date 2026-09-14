@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as S from './store.js'
 import { estadoTexto } from './textos.js'
 import { hhmm, money } from './format.js'
@@ -43,19 +44,22 @@ export function ToastHost({ children }) {
 
 /* -------------------------------------------------------------- diálogo */
 
-export function Dialogo({ titulo, children, onCerrar }) {
+export function Dialogo({ titulo, children, onCerrar, ancho = false }) {
   useEffect(() => {
     const on = (e) => { if (e.key === 'Escape') onCerrar() }
     window.addEventListener('keydown', on)
     return () => window.removeEventListener('keydown', on)
   }, [onCerrar])
-  return (
+  // Va al raíz del tablero: dentro de una tarjeta con animación (transform) un
+  // position:fixed queda atrapado y el diálogo aparece fuera de la pantalla.
+  return createPortal(
     <div className="d-dialogwrap" onClick={onCerrar}>
-      <div className="d-dialog" role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
+      <div className={'d-dialog' + (ancho ? ' d-dialog--ancho' : '')} role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
         <h2>{titulo}</h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.querySelector('.dash') || document.body,
   )
 }
 
