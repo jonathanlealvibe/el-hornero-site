@@ -743,3 +743,12 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
   .d-calor__celda i{ animation:d-fade 320ms ease-out both; animation-delay:calc(var(--i,0)*5ms) }
   .d-segm i{ animation:d-recorta var(--t-bar) var(--e-out) both }
 }
+
+/* Pestaña Promociones */
+.d-form{ display:grid; gap:12px; }
+.d-form label{ display:grid; gap:6px; font-size:13px; font-weight:600; color:var(--d-ink-2); }
+.d-form .d-input{ width:100%; }
+.d-form__row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.d-form__check{ display:flex !important; align-items:center; gap:8px; }
+.d-form__actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
+.d-promo-texto{ font-size:14px; line-height:1.55; padding:12px 14px; border-radius:var(--r-sm); background:var(--d-surface-2); border:1px solid var(--d-line-soft); }

@@ -408,3 +408,11 @@ img { max-width: 100%; }
 .wa-banner b { font-weight: 700; }
 .wa-banner:hover { background: #D6E8DD; }
 @media print { .wa-banner { display: none !important; } }
+
+/* Promociones vigentes (las publica el Centro de mando). */
+.promos { padding: 14px 16px 4px; max-width: 1100px; margin: 0 auto; }
+.promos__title { font-size: 15px; font-weight: 700; color: #0E5A33; margin: 0 0 8px; }
+.promos__row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+.promo { flex: 0 0 auto; min-width: 180px; max-width: 240px; background: #FFF7D6; border: 1px solid #F5C518; border-radius: 12px; padding: 10px 12px; scroll-snap-align: start; }
+.promo b { display: block; font-size: 14px; color: #1D1D1B; }
+.promo span { display: block; font-size: 12.5px; color: #555; margin-top: 2px; }

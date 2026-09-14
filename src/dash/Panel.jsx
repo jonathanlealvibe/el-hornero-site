@@ -10,6 +10,7 @@ import { importarPedidosDelSitio, avisarTienda } from './vivo.js'
 import { ToastHost } from './Editable.jsx'
 import { Hoy, Pedidos, PedidoFicha, Resumen } from './screens.jsx'
 import { Camila, Clientes, Cliente, Motorizados } from './screens2.jsx'
+import { Promociones } from './Promociones.jsx'
 import './dash.css'
 
 const DESTINOS = () => [
@@ -19,6 +20,7 @@ const DESTINOS = () => [
   { key: 'motos', label: T('Motos', 'Riders') },
   { key: 'camila', label: 'Camila' },
   { key: 'clientes', label: T('Clientes', 'Customers') },
+  { key: 'promos', label: T('Promociones', 'Promotions') },
 ]
 
 S.conectarTienda(avisarTienda)
@@ -119,6 +121,7 @@ export default function Panel() {
       case 'motos': return <Motorizados F={F} sel={sub} q={q} />
       case 'camila': return <Camila rango={rango} F={F} q={q} />
       case 'clientes': return <Clientes q={q} F={F} />
+      case 'promos': return <Promociones />
       default: return <Hoy F={F} datos={datos} onNuevos={(n) => { nuevos.current = n }} />
     }
   }
