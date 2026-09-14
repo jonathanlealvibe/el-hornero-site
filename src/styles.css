@@ -392,9 +392,13 @@ img { max-width: 100%; }
 @media (max-width: 700px) { .toast { bottom: calc(86px + env(safe-area-inset-bottom)); } }
 
 /* Botón "Mis links por WhatsApp": fijo abajo a la izquierda; el widget de voz está a la derecha. */
-.wa-links { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 60; display: inline-flex; align-items: center; gap: 9px;
+/* Popover manual: vive en la capa superior, por encima de la ventana del asistente de voz en el celular.
+   Se anulan los estilos por defecto del popover (centrado, borde, fondo). */
+.wa-links { position: fixed; inset: auto auto calc(16px + env(safe-area-inset-bottom)) 16px; margin: 0; width: auto; height: auto; overflow: visible; border: 0;
+  z-index: 2147483647; display: inline-flex; align-items: center; gap: 9px;
   padding: 11px 16px 11px 13px; border-radius: 999px; background: #25D366; color: #08301a; font-weight: 700; font-size: 14px; text-decoration: none;
   box-shadow: 0 8px 22px rgba(0,0,0,.22); transition: transform 120ms ease-out, background-color 120ms; }
+.wa-links:popover-open { display: inline-flex; }
 .wa-links:hover { background: #1fbf5a; transform: translateY(-1px); }
 .wa-links svg { flex: 0 0 auto; }
 @media (max-width: 520px) { .wa-links span { font-size: 13px; } .wa-links { padding: 10px 14px 10px 12px; } }
