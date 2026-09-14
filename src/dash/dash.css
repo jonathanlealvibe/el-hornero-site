@@ -568,6 +568,7 @@ tr.d-new > td{ animation:d-flash-td var(--t-flash) ease-out both; }
   .d-rail,.d-tabbar,.d-filterbar,.d-filterpill,.d-actionbar,.d-toolbar,.d-btn,.d-vivo{ display:none !important }
   .d-main{ padding:0 } .d-card,.d-stats{ box-shadow:none; border:1px solid #CFD2CB; break-inside:avoid }
   .dash *, .dash *::before, .dash *::after{ animation:none !important; }
+  .dash::before, .dash::after{ display:none !important; }
 }
 
 /* ---------- 17. TEMA CLARO: la paleta de siempre ------------ */
@@ -721,13 +722,18 @@ html[data-tema="claro"]{ background:#F3F4F1; color-scheme:light; }
 .d-rail .d-credit{ color:rgba(242,244,240,.6); } .d-rail .d-credit b{ color:var(--d-blue-lit); }
 .d-credit--pie{ display:none; text-align:center; margin-top:var(--s-6); }
 @media (max-width:899px){ .d-rail .d-credit{ display:none; } .d-rail__vivo{ display:block; } .d-credit--pie{ display:block; } }
-/* marca de agua, solo en oscuro: el logo enorme y casi negro detrás de las tarjetas */
-.dash:not(.dash--claro){ position:relative; z-index:0; }
-.dash:not(.dash--claro)::before{ content:""; position:fixed; z-index:-1; pointer-events:none; left:50%; top:50%; width:min(96vw,1120px); aspect-ratio:1; translate:-50% -46%;
+/* marca de agua: el logo enorme detrás de las tarjetas, fijo y sin interacción.
+   En oscuro, casi negro con viñeta; en claro, un verde apenas entintado sobre el
+   fondo hueso (la máscara deja solo el disco: sobre el hueso el disco desaparece
+   y quedan la EH y el aro). Las tarjetas son opacas: el texto no pierde contraste. */
+.dash{ position:relative; z-index:0; }
+.dash::before{ content:""; position:fixed; z-index:-1; pointer-events:none; left:50%; top:50%; width:min(96vw,1120px); aspect-ratio:1; translate:-50% -46%;
   background:url(/icons/icon-512.png) center/contain no-repeat; filter:grayscale(1) brightness(.85); opacity:.05;
   -webkit-mask-image:radial-gradient(circle closest-side, #000 79%, transparent 82%); mask-image:radial-gradient(circle closest-side, #000 79%, transparent 82%); }
-.dash:not(.dash--claro)::after{ content:""; position:fixed; z-index:-1; pointer-events:none; inset:0;
+.dash::after{ content:""; position:fixed; z-index:-1; pointer-events:none; inset:0;
   background:radial-gradient(ellipse 60% 55% at 50% 42%, rgba(31,154,85,.07), transparent 70%), radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, rgba(0,0,0,.5) 100%); }
+.dash.dash--claro::before{ filter:saturate(.7); opacity:.045; }
+.dash.dash--claro::after{ background:radial-gradient(ellipse 60% 55% at 50% 42%, rgba(14,124,65,.05), transparent 70%); }
 @media (prefers-reduced-motion:no-preference){
   .d-chispa__linea{ stroke-dasharray:1; animation:d-traza var(--t-trace) var(--e-out) both }
   .d-chispa__area{ animation:d-recorta var(--t-trace) var(--e-out) both }
