@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CATS, MENU, FREE_DELIVERY_OVER, DELIVERY_FEE, IVA } from './data.js'
 import InstallButton from './InstallButton.jsx'
-import WhatsAppLinks from './WhatsAppLinks.jsx'
+import WhatsAppLinks, { WhatsAppBanner } from './WhatsAppLinks.jsx'
 import { useRoute, go } from './router.js'
 import { lazy, Suspense } from 'react'
 const Panel = lazy(() => import('./dash/Panel.jsx'))
@@ -167,6 +167,7 @@ function Home() {
         <button type="button" className="location-btn">Ingresa tu ubicación <span className="caret">▾</span></button>
       </div>
 
+      <WhatsAppBanner />
       <section id="hero" className="hero">
         <img src="/assets/hero-portada.png" alt="Encuentra promociones y descuentos exclusivos — descarga la app de el Hornero" />
       </section>

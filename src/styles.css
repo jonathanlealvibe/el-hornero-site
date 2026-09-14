@@ -402,3 +402,9 @@ img { max-width: 100%; }
 .wa-links:hover { background: #1fbf5a; transform: translateY(-1px); }
 .wa-links svg { flex: 0 0 auto; }
 @media (max-width: 520px) { .wa-links span { font-size: 13px; } .wa-links { padding: 10px 14px 10px 12px; } }
+
+/* Franja de WhatsApp en el flujo (respaldo del botón flotante). */
+.wa-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 10px 16px; background: #E3EFE7; color: #0E5A33; text-decoration: none; font-size: 13.5px; line-height: 1.3; border-bottom: 1px solid #CFE3D6; }
+.wa-banner b { font-weight: 700; }
+.wa-banner:hover { background: #D6E8DD; }
+@media print { .wa-banner { display: none !important; } }
