@@ -7,7 +7,7 @@ const BASE = (typeof window !== 'undefined' && window.EH_API) || import.meta.env
 export const DEMO = !BASE
 
 const LS = 'elhornero.orders'
-const read = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') } catch { return {} } }
+const read = () => { try { const o = JSON.parse(localStorage.getItem(LS) || '{}'); delete o.q; return o } catch { return {} } }
 const write = (o) => { try { localStorage.setItem(LS, JSON.stringify(o)) } catch { /* ignore */ } }
 // Order codes get read aloud by Camila and typed by customers, so the alphabet drops
 // everything that sounds or looks the same: no 0/O, no 1/I, no vowels (avoids real words).
@@ -67,25 +67,29 @@ export async function createOrder(order) {
 export async function getOrder(id, packed) {
   if (!DEMO) return http('GET', `/orders/${id}`)
   const all = read()
-  if (!all[id] && packed) {
+  // Un link del CRM llega con id "q" (o con un id que este celular no conoce): el pedido viene
+  // empacado en el link. Se guarda SOLO con su id real, nunca con "q", para que dos links
+  // distintos abiertos en el mismo celular no se pisen.
+  if (packed && (id === 'q' || !all[id])) {
     const fromLink = unpackOrder(packed)
     if (fromLink && fromLink.id) {
-      // A demo link can be opened days after it was made: restart the clock so the
-      // customer always sees the order progress from the beginning.
-      const age = Date.now() - (fromLink.createdAt || 0)
-      if (!fromLink.createdAt || age > 2 * 60 * 60 * 1000) fromLink.createdAt = Date.now()
-      // Un link armado por el CRM no trae coordenadas: se ubican aquí, una vez.
-      if (!fromLink.dest) {
-        const geo = fromLink.modalidad === 'A domicilio' ? await geocode(fromLink.direccion) : null
-        fromLink.dest = geo || (fromLink.modalidad === 'A domicilio' ? DEFAULT_DEST : { lat: LOCAL.lat, lng: LOCAL.lng })
-        fromLink.geocoded = !!geo
-        fromLink.rider = { lat: LOCAL.lat, lng: LOCAL.lng, at: Date.now() }
+      const real = fromLink.id
+      if (!all[real]) {
+        // A demo link can be opened days after it was made: restart the clock so the
+        // customer always sees the order progress from the beginning.
+        const age = Date.now() - (fromLink.createdAt || 0)
+        if (!fromLink.createdAt || age > 2 * 60 * 60 * 1000) fromLink.createdAt = Date.now()
+        // Un link armado por el CRM no trae coordenadas: se ubican aquí, una vez.
+        if (!fromLink.dest) {
+          const geo = fromLink.modalidad === 'A domicilio' ? await geocode(fromLink.direccion) : null
+          fromLink.dest = geo || (fromLink.modalidad === 'A domicilio' ? DEFAULT_DEST : { lat: LOCAL.lat, lng: LOCAL.lng })
+          fromLink.geocoded = !!geo
+          fromLink.rider = { lat: LOCAL.lat, lng: LOCAL.lng, at: Date.now() }
+        }
+        all[real] = fromLink
+        write(all)
       }
-      // El id real viene dentro del link; se guarda con ese, no con el de la ruta.
-      const real = fromLink.id || id
-      all[real] = fromLink
-      if (real !== id) all[id] = fromLink
-      write(all)
+      id = real
     }
   }
   const o = all[id]; if (!o) return null

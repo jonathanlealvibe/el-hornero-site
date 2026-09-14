@@ -36,6 +36,8 @@ export default function Order({ id, packed }) {
     tick(); const t = setInterval(tick, 1500); return () => { alive = false; clearInterval(t) }
   }, [id, packed])
   useEffect(() => {
+    // El componente se reutiliza al pasar de "q" al id real: lo vivo de otro pedido no se hereda.
+    live.current = { fix: null, done: null }
     if (id === 'q') return
     return subscribeLive(id, (m) => {
       if (m.t === 'fix' && (!live.current.fix || m.at >= live.current.fix.at)) live.current.fix = m
