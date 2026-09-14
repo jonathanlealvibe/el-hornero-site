@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getOrder, pushRiderLocation, updateOrder, STATUS_LABEL } from '../api.js'
 import { publishLive, PUBLISH_EVERY_MS } from '../live.js'
+import { go } from '../router.js'
 
 export default function Driver({ id, packed }) {
   const [o, setO] = useState(null)
@@ -25,7 +26,14 @@ export default function Driver({ id, packed }) {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
 
-  useEffect(() => { getOrder(id, packed).then(setO) }, [id, packed])
+  useEffect(() => {
+    getOrder(id, packed).then((r) => {
+      // Un link armado por el CRM llega con id "q": el id real viene adentro, y el canal de
+      // ubicación se deriva de ese id, así que la pantalla tiene que vivir en el id real.
+      if (r && r.id && r.id !== id) { go(`/repartidor/${r.id}${packed ? `?d=${packed}` : ''}`); return }
+      setO(r)
+    })
+  }, [id, packed])
 
   const start = () => {
     if (!navigator.geolocation) { setErr('Este celular no permite ubicación.'); return }
