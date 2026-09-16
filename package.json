@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && rm -rf \"$TMPDIR/ghp\" && git worktree prune && git worktree add -q \"$TMPDIR/ghp\" gh-pages && rsync -a --checksum --exclude .git dist/ \"$TMPDIR/ghp/\" && cd \"$TMPDIR/ghp\" && git add -A && git -c user.name=\"Jonathan Leal\" -c user.email=\"jonlealfinances@gmail.com\" commit -qm \"Deploy site\" ; git push origin gh-pages; cd - >/dev/null; git worktree remove -f \"$TMPDIR/ghp\"",
-    "link": "node tools/make-link.mjs"
+    "link": "node tools/make-link.mjs",
+    "sync:flujos": "cd \"../Abba Systems/concierge-flow\" && npm run build && cd - >/dev/null && cp \"../Abba Systems/concierge-flow/dist/\"*.js public/flujos/app.js && cp \"../Abba Systems/concierge-flow/dist/\"*.css public/flujos/app.css && echo \"constructor actualizado en public/flujos\""
   },
   "dependencies": {
     "lz-string": "^1.5.0",

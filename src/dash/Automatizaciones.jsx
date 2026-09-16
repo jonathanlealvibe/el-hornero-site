@@ -5,7 +5,11 @@
 import { useState } from 'react'
 import { T } from './i18n.js'
 
-const CONSTRUCTOR = 'https://concierge-flow.jonlealfinances.workers.dev/'
+// Mismo origen a propósito: un iframe hacia otro dominio queda a merced de la
+// configuración del navegador de quien mire el panel. Los archivos viven en
+// public/flujos y se refrescan con `npm run sync:flujos`.
+const CONSTRUCTOR = './flujos/index.html'
+const CONSTRUCTOR_ABS = new URL('flujos/index.html', window.location.origin + window.location.pathname.replace(/[^/]*$/, '')).href
 
 export function Automatizaciones() {
   const [falló, setFalló] = useState(false)
@@ -20,7 +24,7 @@ export function Automatizaciones() {
                'Build what should happen on its own: recover unpaid orders, notify the branch, post-delivery surveys. Ask the assistant in Spanish or drag the blocks yourself.')}
           </p>
         </div>
-        <a className="btn-lin" href={CONSTRUCTOR} target="_blank" rel="noreferrer">
+        <a className="btn-lin" href={CONSTRUCTOR_ABS} target="_blank" rel="noreferrer">
           {T('Abrir en otra pestaña', 'Open in a new tab')} ↗
         </a>
       </header>
@@ -28,7 +32,7 @@ export function Automatizaciones() {
       {falló ? (
         <div className="vacio" style={{ padding: 36, textAlign: 'center' }}>
           <p>{T('El constructor no se pudo mostrar aquí dentro.', 'The builder could not be shown inline.')}</p>
-          <a className="btn-lin" href={CONSTRUCTOR} target="_blank" rel="noreferrer">
+          <a className="btn-lin" href={CONSTRUCTOR_ABS} target="_blank" rel="noreferrer">
             {T('Abrirlo en otra pestaña', 'Open it in a new tab')} ↗
           </a>
         </div>
