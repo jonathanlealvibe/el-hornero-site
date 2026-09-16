@@ -12,6 +12,7 @@ import { ToastHost } from './Editable.jsx'
 import { Hoy, Pedidos, PedidoFicha, Resumen } from './screens.jsx'
 import { Camila, Clientes, Cliente, Motorizados } from './screens2.jsx'
 import { Promociones } from './Promociones.jsx'
+import { Automatizaciones } from './Automatizaciones.jsx'
 import './dash.css'
 
 const DESTINOS = () => [
@@ -22,6 +23,7 @@ const DESTINOS = () => [
   { key: 'camila', label: 'Camila' },
   { key: 'clientes', label: T('Clientes', 'Customers') },
   { key: 'promos', label: T('Promociones', 'Promotions') },
+  { key: 'flujos', label: T('Automatizaciones', 'Automations') },
 ]
 
 S.conectarTienda(avisarTienda)
@@ -124,6 +126,7 @@ export default function Panel() {
       case 'camila': return <Camila rango={rango} F={F} q={q} />
       case 'clientes': return <Clientes q={q} F={F} />
       case 'promos': return <Promociones />
+      case 'flujos': return <Automatizaciones />
       default: return <Hoy F={F} datos={datos} onNuevos={(n) => { nuevos.current = n }} />
     }
   }
