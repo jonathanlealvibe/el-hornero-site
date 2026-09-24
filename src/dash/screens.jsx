@@ -538,7 +538,7 @@ export function Pedidos({ rango, F, q }) {
           <p className="d-empty">
             <strong>{conFiltro ? T(`Ningún pedido ${estado ? estadoTexto(estado, q.modalidad).toLowerCase() : 'así'} ${PERIODO_FRASE[F.periodo]}.`, `No ${estado ? estadoTexto(estado, q.modalidad).toLowerCase() : 'matching'} orders ${PERIODO_FRASE[F.periodo]}.`) : F.local ? T('Con el local elegido no hay nada.', 'Nothing for the chosen branch.') : T(`Ningún pedido ${PERIODO_FRASE[F.periodo]}.`, `No orders ${PERIODO_FRASE[F.periodo]}.`)}</strong>
             {conFiltro && sinFiltro ? <button type="button" onClick={() => irCon({ estado: '', modalidad: '', canal: '', pago: '', categoria: '' })}>{T(`Hay ${sinFiltro} pedidos en otros estados · Quitar el filtro`, `There are ${sinFiltro} orders in other statuses · Clear the filter`)}</button>
-              : F.local ? <button type="button" onClick={() => irCon({ local: '' })}>{T('Puede que el pedido esté en otro local · Ver todos los locales', 'The order may be in another branch · See all branches')}</button> : T('Los pedidos aparecen aquí apenas Camila o la página los reciben.', 'Orders show up here as soon as Camila or the website receives them.')}
+              : F.local ? <button type="button" onClick={() => irCon({ local: 'todos' })}>{T('Puede que el pedido esté en otro local · Ver todos los locales', 'The order may be in another branch · See all branches')}</button> : T('Los pedidos aparecen aquí apenas Camila o la página los reciben.', 'Orders show up here as soon as Camila or the website receives them.')}
           </p>
         ) : (
           <table className="d-table">

@@ -33,6 +33,7 @@ export function hrefPanel(vista, params = {}, actuales = {}) {
   const local = 'local' in params ? params.local : actuales.local
   const periodo = 'periodo' in params ? params.periodo : actuales.periodo
   if (local) q.set('local', local)
+  else if ('local' in params) q.set('local', TODOS)
   if (periodo && periodo !== 'hoy') q.set('periodo', periodo)
   if (periodo === 'dia' && (params.dia || actuales.dia)) q.set('dia', params.dia || actuales.dia)
   for (const [k, v] of Object.entries(params)) {
@@ -43,6 +44,12 @@ export function hrefPanel(vista, params = {}, actuales = {}) {
   const s = q.toString()
   return `#/panel/${vista}${s ? `?${s}` : ''}`
 }
+
+// "todos" es un valor explícito, no la ausencia de valor. Hace falta porque
+// `irCon` borra los parámetros vacíos de la URL, y sin el parámetro
+// `usarFiltros` caía en el local recordado: elegir "Todos los locales" te
+// devolvía al local anterior y no había forma de salir. (Bug de Mauricio.)
+export const TODOS = 'todos'
 
 const leer = () => {
   const raw = window.location.hash.replace(/^#\/?/, '')
@@ -60,8 +67,14 @@ export function usarFiltros() {
     return () => window.removeEventListener('hashchange', on)
   }, [])
   let local = q.local
-  if (local === undefined) { try { local = localStorage.getItem('eh.dash.local') || '' } catch { local = '' } }
-  useEffect(() => { if (q.local !== undefined) { try { localStorage.setItem('eh.dash.local', q.local) } catch { /* privado */ } } }, [q.local])
+  if (local === TODOS) local = ''
+  else if (local === undefined) { try { local = localStorage.getItem('eh.dash.local') || '' } catch { local = '' } }
+  // Al elegir "todos" se recuerda el vacío, así los enlaces que no llevan el
+  // parámetro tampoco resucitan el local viejo.
+  useEffect(() => {
+    if (q.local === undefined) return
+    try { localStorage.setItem('eh.dash.local', q.local === TODOS ? '' : q.local) } catch { /* privado */ }
+  }, [q.local])
   const periodo = PERIODOS.some((p) => p.key === q.periodo) ? q.periodo : 'hoy'
   return { ...q, local: local || '', periodo, dia: q.dia || '' }
 }

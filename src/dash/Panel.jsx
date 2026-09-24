@@ -3,7 +3,7 @@ import { useRoute, go } from '../router.js'
 import * as S from './store.js'
 import { sembrar, haySemilla, renovarDemo } from './seed.js'
 import { hhmm, fechaLarga, dayKey } from './format.js'
-import { PERIODOS, rangoDe, usarFiltros, irCon, hrefPanel } from './nav.js'
+import { TODOS, PERIODOS, rangoDe, usarFiltros, irCon, hrefPanel } from './nav.js'
 import { useDormido } from './motion.js'
 import { T, getLang, setLang, getTema, setTema, getDatos, setDatos } from './i18n.js'
 import { importarPedidosDelSitio, avisarTienda } from './vivo.js'
@@ -23,7 +23,7 @@ const DESTINOS = () => [
   { key: 'camila', label: 'Camila' },
   { key: 'clientes', label: T('Clientes', 'Customers') },
   { key: 'promos', label: T('Promociones', 'Promotions') },
-  { key: 'flujos', label: T('Automatizaciones', 'Automations') },
+  { key: 'flujos', label: 'Workflows' },
 ]
 
 S.conectarTienda(avisarTienda)
@@ -113,7 +113,7 @@ export default function Panel() {
   if (!listo) return <div className={'dash' + (tema === 'claro' ? ' dash--claro' : '')} style={{ minHeight: '100dvh' }}><p style={{ padding: 40 }}>{T('Preparando el tablero…', 'Preparing the dashboard…')}</p></div>
 
   const cerrarHoja = () => { setCerrando(true); setTimeout(() => { setHoja(false); setCerrando(false) }, 170) }
-  const setLocal = (v) => irCon({ local: v || '' })
+  const setLocal = (v) => irCon({ local: v || TODOS })
   const setPeriodo = (v) => irCon({ periodo: v === 'hoy' ? '' : v })
 
   const contenido = () => {

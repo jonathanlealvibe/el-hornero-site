@@ -1,4 +1,4 @@
-// Pestaña "Automatizaciones": el constructor de workflows, dentro del panel.
+// Pestaña "Workflows": el constructor, dentro del panel.
 // El lienzo se sirve desde el mismo Worker que guarda y ejecuta, así que aquí
 // solo lo incrustamos. La llave del servidor se pega una vez dentro del lienzo
 // y se queda en el navegador de quien la puso; nunca viaja en este código.
@@ -18,10 +18,10 @@ export function Automatizaciones() {
     <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', minHeight: '72vh' }}>
       <header className="tarjeta-cab">
         <div>
-          <h2>{T('Automatizaciones', 'Automations')}</h2>
+          <h2>Workflows</h2>
           <p className="sub">
-            {T('Armá lo que quieras que pase solo: recuperar pedidos sin pagar, avisar al local, encuestas después de entregar. Pedíselo al asistente en español o armalo con los bloques.',
-               'Build what should happen on its own: recover unpaid orders, notify the branch, post-delivery surveys. Ask the assistant in Spanish or drag the blocks yourself.')}
+            {T('Armá los workflows que quieras: recuperar pedidos sin pagar, avisar al local, encuestas después de entregar. Pedíselo al asistente en español o armalo arrastrando los bloques.',
+               'Build the workflows you need: recover unpaid orders, notify the branch, post-delivery surveys. Ask the assistant in Spanish or drag the blocks yourself.')}
           </p>
         </div>
         <a className="btn-lin" href={CONSTRUCTOR_ABS} target="_blank" rel="noreferrer">
@@ -38,7 +38,7 @@ export function Automatizaciones() {
         </div>
       ) : (
         <iframe
-          title={T('Constructor de automatizaciones', 'Automation builder')}
+          title={T('Constructor de workflows', 'Workflow builder')}
           src={CONSTRUCTOR}
           onError={() => setFalló(true)}
           style={{ flex: 1, width: '100%', minHeight: '68vh', border: 0, borderRadius: 10, background: 'var(--fondo-2, #0e1116)' }}
